@@ -98,7 +98,7 @@ function renderCategories() {
             type: 'loop',
             autoWidth: true,
             start: categories.indexOf(activeCategory),
-            focus: 'center',
+            focus: 0,
             trimSpace: false,
             drag: true,
             arrows: false,
@@ -112,6 +112,7 @@ function renderCategories() {
         });
         categoryCarousel.on('moved', index => selectCategory(categories[index]));
         categoryCarousel.mount();
+        requestAnimationFrame(() => categoryCarousel?.refresh());
     }
 }
 
