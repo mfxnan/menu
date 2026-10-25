@@ -398,21 +398,6 @@ dialog::backdrop { background: #161715a6; -webkit-backdrop-filter: blur(3px); ba
     padding: 0;
 }
 
-.checkout-remaining-line {
-    align-self: end;
-    align-items: center;
-    min-height: 48px;
-    margin: 0;
-    padding: 12px 0 0;
-    border-top: 1px solid var(--line);
-    font-size: 12px;
-}
-
-.checkout-remaining-line strong:last-child {
-    color: var(--ink);
-    white-space: nowrap;
-}
-
 .checkout-actions {
     flex: 0 0 auto;
     justify-content: flex-end;
@@ -474,10 +459,6 @@ dialog::backdrop { background: #161715a6; -webkit-backdrop-filter: blur(3px); ba
 
     .checkout-form .field.full {
         grid-column: auto;
-    }
-
-    .checkout-remaining-line {
-        min-height: 44px;
     }
 
     .checkout-actions {

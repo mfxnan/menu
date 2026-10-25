@@ -260,20 +260,7 @@ function renderCartContents() {
     });
     const { subtotal } = getCartTotals();
     document.getElementById('checkoutSubtotal').textContent = rupiah.format(subtotal);
-    updatePaymentSummary(true);
     document.querySelector('#checkoutForm button[type="submit"]').disabled = cart.size === 0;
-}
-
-function updatePaymentSummary(clampToTotal = false) {
-    const { subtotal } = getCartTotals();
-    const downPaymentInput = document.getElementById('downPayment');
-    downPaymentInput.max = String(subtotal);
-    let downPayment = Number(downPaymentInput.value) || 0;
-    if (clampToTotal && downPayment > subtotal) {
-        downPayment = subtotal;
-        downPaymentInput.value = String(downPayment);
-    }
-    document.getElementById('remainingPayment').textContent = rupiah.format(Math.max(0, subtotal - downPayment));
 }
 
 function sendOrder(event) {
@@ -293,12 +280,6 @@ function sendOrder(event) {
         return;
     }
     const { subtotal } = getCartTotals();
-    const downPayment = Number(form.get('down_payment')) || 0;
-    if (!Number.isSafeInteger(downPayment) || downPayment < 0 || downPayment > subtotal) {
-        showToast('DP harus berupa angka antara Rp0 dan total pemesanan.');
-        document.getElementById('downPayment').focus();
-        return;
-    }
     const orderLines = [...cart.values()].map(({ item, quantity }, index) =>
         `${index + 1}. Nama paket/menu: ${item.name}\n    Jumlah: ${quantity}\n    Harga per box: ${rupiah.format(item.price)}`
     );
@@ -321,8 +302,6 @@ function sendOrder(event) {
         '',
         'TOTAL PEMESANAN',
         `Total: ${rupiah.format(subtotal)}`,
-        `DP: ${rupiah.format(downPayment)}`,
-        `Sisa pembayaran: ${rupiah.format(subtotal - downPayment)}`,
         '',
         'JADWAL PESANAN',
         `Tanggal pesanan: ${date}`,
