@@ -92,7 +92,7 @@ Frontend memakai Supabase publishable key; key tersebut memang terlihat oleh bro
 
 4. Pastikan URL dan publishable key di `js/app.js` dan `js/admin.js` cocok dengan proyek Supabase. Jangan gunakan `service_role` key pada website.
 5. Uji satu pesanan pelanggan beserta perubahan status di `/admin.html`. QRIS versi awal memakai QR statis di kasir; admin harus memastikan pembayaran sebelum menandainya lunas.
-6. Di pengaturan GitHub Pages repositori, salin URL situs yang aktif lalu buat QR outlet dari URL tersebut. Jangan cetak QR sebelum URL diuji. Metadata lama pada `index.html` masih menunjuk `https://mfxnan.github.io/daftar-menu/`, sedangkan nama repositori saat ini `menu`; pastikan URL Pages yang benar sebelum memperbarui metadata atau mencetak QR.
+6. Buat QR outlet permanen dari URL GitHub Pages `https://mfxnan.github.io/menu/`. Uji URL tersebut dari ponsel sebelum mencetak QR; QR tetap sama selama URL situs tidak berubah.
 
 Fungsi database dapat dipanggil dari browser, tetapi akses langsung ke tabel pesanan ditutup. Akun harus terdaftar pada `order_admins`. Tabel `menus` tetap memerlukan kebijakan RLS publik/admin tersendiri.
 
