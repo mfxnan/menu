@@ -187,13 +187,20 @@ function renderMenu() {
 function createQuantityControl(item) {
     const quantity = cart.get(String(item.id))?.quantity || 0;
     const control = makeElement('div', 'quantity-control');
+    control.dataset.itemId = String(item.id);
     const decrease = makeElement('button', '', '−');
     decrease.type = 'button';
     decrease.disabled = quantity === 0;
     decrease.setAttribute('aria-label', `Kurangi ${item.name}`);
     decrease.addEventListener('click', () => changeQuantity(item, -1));
-    const value = makeElement('span', 'quantity-value', String(quantity));
+    const value = makeElement('input', 'quantity-value');
+    value.type = 'number';
+    value.inputMode = 'numeric';
+    value.min = '0';
+    value.step = '1';
+    value.value = String(quantity);
     value.setAttribute('aria-label', `Jumlah ${item.name}`);
+    value.addEventListener('change', () => setQuantity(item, Number.parseInt(value.value, 10) || 0));
     const increase = makeElement('button', '', '+');
     increase.type = 'button';
     increase.setAttribute('aria-label', `Tambah ${item.name}`);
@@ -205,9 +212,19 @@ function createQuantityControl(item) {
 function changeQuantity(item, delta) {
     const key = String(item.id);
     const quantity = Math.max(0, (cart.get(key)?.quantity || 0) + delta);
+    setQuantity(item, quantity);
+}
+
+function setQuantity(item, quantity) {
+    const key = String(item.id);
+    quantity = Math.max(0, Math.floor(quantity));
     if (quantity === 0) cart.delete(key);
     else cart.set(key, { item, quantity });
-    renderMenu();
+    document.querySelectorAll('.quantity-control').forEach(control => {
+        if (control.dataset.itemId !== key) return;
+        control.querySelector('.quantity-value').value = String(quantity);
+        control.querySelector('button').disabled = quantity === 0;
+    });
     updateCartDock();
     if (document.getElementById('checkoutDialog').open) renderCartContents();
 }
