@@ -299,7 +299,7 @@ async function placeOrder(event) {
     const customerPhone = String(form.get('customer_phone')).trim();
     const phoneDigits = customerPhone.replace(/\D/g, '');
     if (customerPhone && (phoneDigits.length < 8 || phoneDigits.length > 15)) {
-        showToast('Periksa kembali nomor HP / WhatsApp pemesan.');
+        showToast('Periksa kembali nomor HP pemesan.');
         document.getElementById('customerPhone').focus();
         submitButton.disabled = false;
         submitButton.textContent = 'Kirim pesanan';

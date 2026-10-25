@@ -17,7 +17,7 @@ Website katalog menu dan pemesanan Rocket Chicken outlet KS Tubun, Rejasari, Pur
 ### Keranjang dan pemesanan
 
 - Jumlah setiap menu dapat ditambah atau dikurangi.
-- Formulir checkout meminta nama, nomor telepon opsional, catatan opsional, dan metode pembayaran tunai atau QRIS.
+- Formulir checkout meminta nama, nomor HP opsional dengan keyboard angka di ponsel, catatan opsional, dan metode pembayaran tunai atau QRIS.
 - Database menghitung ulang harga berdasarkan menu aktif dan memberi nomor antrean harian.
 - Pelanggan dapat melihat status pesanan menggunakan token pelacakan yang disimpan di browser.
 - QRIS versi MVP dibayar manual menggunakan QR outlet di kasir; admin mengonfirmasi pembayaran.
@@ -124,7 +124,7 @@ Proyek dapat diterbitkan pada hosting statis seperti GitHub Pages. Atur URL Supa
 ## Batasan MVP
 
 - Pesanan berstatus menunggu konfirmasi sebelum diproses. Nomor antrean diberikan saat pesanan dikirim dan dimulai kembali setiap hari menurut waktu Asia/Jakarta.
-- Status pelanggan diperbarui dengan polling 10 detik. Status terakhir dapat dipulihkan dari browser yang sama selama penyimpanan lokal tidak dihapus.
+- Pesanan tersimpan di database dan tidak hilang ketika pelanggan me-refresh halaman. Token untuk membuka status pesanan terakhir disimpan di browser; status dapat dipulihkan selama penyimpanan lokal tidak dihapus.
 - QRIS belum terhubung ke payment gateway. Pembayaran tidak diverifikasi otomatis; admin harus memastikan pembayaran sebelum menandainya lunas.
 - Nomor telepon opsional; nomor antrean yang muncul setelah pemesanan perlu dicatat pelanggan.
 - Keranjang berada di memori halaman. Isinya hilang ketika halaman dimuat ulang atau ditutup.
