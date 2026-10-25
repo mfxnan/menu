@@ -121,6 +121,8 @@ Buka `http://localhost:8000/` untuk katalog dan `http://localhost:8000/admin.htm
 
 Proyek dapat diterbitkan pada hosting statis seperti GitHub Pages. Atur URL Supabase dan kebijakan RLS sebelum digunakan. Setelah perubahan data menu, muat ulang katalog untuk memastikan harga yang tampil sesuai dengan database.
 
+Untuk panduan menjalankan **website, backend, Auth, dan database Supabase sepenuhnya di VPS sendiri**, lihat [Panduan Self-Hosting Penuh di Server Sendiri](docs/panduan-server-sendiri.md).
+
 ## Batasan MVP
 
 - Pesanan berstatus menunggu konfirmasi sebelum diproses. Nomor antrean diberikan saat pesanan dikirim, dimulai kembali setiap hari pukul 00.00 WIB, dan ditampilkan dengan format `001-251026`.
