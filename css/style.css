@@ -370,32 +370,68 @@ dialog::backdrop { background: #161715a6; -webkit-backdrop-filter: blur(3px); ba
     resize: vertical;
 }
 
-.checkout-form #customerAddress {
-    min-height: 96px;
-}
-
 .checkout-form #orderNote {
     min-height: 84px;
 }
 
-.checkout-form .field input[type="date"],
-.checkout-form .field input[type="time"] {
-    display: block;
-    min-height: 48px;
-    padding: 9px 10px;
-    font-size: 15px;
-    -webkit-appearance: auto;
-    -moz-appearance: auto;
-    appearance: auto;
-}
-
-.checkout-form .field input[type="date"]::-webkit-date-and-time-value {
-    text-align: left;
-}
-
-.checkout-form .field input[type="date"]::-webkit-calendar-picker-indicator {
+.payment-options {
     margin: 0;
     padding: 0;
+    border: 0;
+}
+
+.payment-options legend {
+    margin-bottom: 8px;
+}
+
+.payment-option {
+    display: flex !important;
+    align-items: center;
+    gap: 9px;
+    min-height: 40px;
+    padding: 8px 11px;
+    border: 1px solid #d7d7d1;
+    border-radius: 6px;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+}
+
+.checkout-form .payment-option input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--red);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.order-status-dialog {
+    height: auto;
+    max-height: min(86dvh, 520px);
+}
+
+.order-status-shell {
+    height: auto;
+    min-height: 0;
+}
+
+.order-status-content {
+    padding: 28px;
+    text-align: center;
+}
+
+.queue-code {
+    display: block;
+    color: var(--red);
+    font: 600 clamp(28px, 8vw, 52px)/1.1 var(--display);
+    letter-spacing: .04em;
+}
+
+.order-status-content p {
+    color: var(--muted);
+    font-size: 14px;
 }
 
 .checkout-actions {
@@ -405,6 +441,7 @@ dialog::backdrop { background: #161715a6; -webkit-backdrop-filter: blur(3px); ba
     padding: 14px 28px max(14px, env(safe-area-inset-bottom));
     border-top: 1px solid var(--line);
     background: var(--white);
+    .order-status-content { padding: 24px 18px; }
 }
 
 .checkout-actions .button {

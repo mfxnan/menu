@@ -6,9 +6,19 @@
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
     let menu = [];
+    let ordersRefreshTimer;
+    let orderAccessReady = false;
     const fmt = n => 'Rp' + Number(n).toLocaleString('id-ID');
     const msg = (id, text) => $(id).textContent = text;
     const show = (id, yes = true) => $(id).classList.toggle('hidden', !yes);
+    const orderStatuses = {
+        pending: 'Menunggu konfirmasi',
+        accepted: 'Diterima',
+        rejected: 'Ditolak',
+        preparing: 'Sedang disiapkan',
+        ready: 'Siap diambil',
+        completed: 'Selesai'
+    };
     async function initAuth() {
         if (!client) { msg('authStatus', 'Library Supabase gagal dimuat. Periksa koneksi internet.'); return; }
         msg('authStatus', 'Memeriksa sesi admin...');
@@ -23,6 +33,9 @@
         msg('authStatus', 'Login sebagai ' + data.user.email + '. Jika UID bukan admin yang diizinkan RLS, operasi database akan ditolak.');
         show('logoutBtn', true); show('editorPanel', true); show('listPanel', true);
         await refresh();
+        await refreshOrders();
+        clearInterval(ordersRefreshTimer);
+        if (orderAccessReady) ordersRefreshTimer = setInterval(refreshOrders, 10000);
     }
     async function login() {
         if (!client) { msg('authStatus', 'Hubungkan Supabase dulu.'); return; }
@@ -30,7 +43,113 @@
         if (error) { msg('authStatus', 'Login gagal: ' + error.message); return; }
         await afterLogin();
     }
-    async function logout() { if (client) await client.auth.signOut(); show('editorPanel', false); show('listPanel', false); show('logoutBtn', false); msg('authStatus', 'Kamu sudah logout.'); }
+    async function logout() {
+        if (client) {
+            const { error } = await client.auth.signOut();
+            if (error) { msg('authStatus', 'Logout gagal: ' + error.message); return; }
+        }
+        clearInterval(ordersRefreshTimer);
+        show('editorPanel', false); show('listPanel', false); show('orderPanel', false); show('logoutBtn', false);
+        msg('authStatus', 'Kamu sudah logout.');
+    }
+    async function refreshOrders() {
+        if (!client) return;
+        msg('ordersStatus', 'Memuat pesanan...');
+        const { data, error } = await client.rpc('admin_list_orders');
+        if (error) {
+            orderAccessReady = false;
+            clearInterval(ordersRefreshTimer);
+            show('orderPanel', false);
+            msg('authStatus', 'Login berhasil, tetapi akses admin pesanan belum disiapkan. Tambahkan UID admin pada tabel order_admins setelah migrasi database diterapkan.');
+            return;
+        }
+        orderAccessReady = true;
+        show('orderPanel', true);
+        renderOrders(data || []);
+        msg('ordersStatus', `Berhasil memuat ${data?.length || 0} pesanan terbaru.`);
+    }
+    function renderOrders(orders) {
+        const rows = $('orderRows');
+        rows.replaceChildren();
+        if (!orders.length) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 6;
+            cell.textContent = 'Belum ada pesanan.';
+            row.append(cell);
+            rows.append(row);
+            return;
+        }
+        orders.forEach(order => {
+            const row = document.createElement('tr');
+            const queue = document.createElement('td');
+            queue.textContent = `${order.queue_code}\n${new Date(order.created_at).toLocaleString('id-ID')}`;
+
+            const customer = document.createElement('td');
+            customer.textContent = `${order.customer_name}${order.customer_phone ? `\n${order.customer_phone}` : ''}`;
+            const items = document.createElement('ul');
+            items.className = 'order-item-list';
+            (order.items || []).forEach(item => {
+                const itemRow = document.createElement('li');
+                itemRow.textContent = `${item.quantity} × ${item.menu_name} — ${fmt(item.line_total)}`;
+                items.append(itemRow);
+            });
+            if (order.note) {
+                const note = document.createElement('p');
+                note.className = 'muted';
+                note.textContent = `Catatan: ${order.note}`;
+                customer.append(note);
+            }
+            customer.append(items);
+
+            const total = document.createElement('td');
+            total.textContent = fmt(order.total_amount);
+
+            const payment = document.createElement('td');
+            const method = order.payment_method === 'qris' ? 'QRIS' : 'Tunai';
+            payment.textContent = `${method}\n${order.payment_status === 'paid' ? 'Dikonfirmasi' : 'Belum dibayar'}`;
+
+            const status = document.createElement('td');
+            status.textContent = orderStatuses[order.status] || order.status;
+
+            const actions = document.createElement('td');
+            const addAction = (label, nextStatus, nextPaymentStatus, className = 'order-action') => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = className;
+                button.textContent = label;
+                button.addEventListener('click', () => updateOrder(order, nextStatus, nextPaymentStatus));
+                actions.append(button);
+            };
+            if (order.status === 'pending') {
+                addAction('Terima', 'accepted', null);
+                addAction('Tolak', 'rejected', null, 'danger order-action');
+            } else if (order.status === 'accepted') {
+                addAction('Mulai siapkan', 'preparing', null);
+            } else if (order.status === 'preparing') {
+                addAction('Siap diambil', 'ready', null);
+            } else if (order.status === 'ready') {
+                addAction('Selesaikan', 'completed', null);
+            }
+            if (order.payment_status !== 'paid' && ['accepted', 'preparing', 'ready', 'completed'].includes(order.status)) {
+                addAction('Konfirmasi bayar', null, 'paid', 'secondary order-action');
+            }
+            row.append(queue, customer, total, payment, status, actions);
+            rows.append(row);
+        });
+    }
+    async function updateOrder(order, status, paymentStatus) {
+        const { error } = await client.rpc('admin_update_order', {
+            p_order_id: order.id,
+            p_status: status,
+            p_payment_status: paymentStatus
+        });
+        if (error) {
+            msg('ordersStatus', 'Gagal memperbarui pesanan: ' + error.message);
+            return;
+        }
+        await refreshOrders();
+    }
     async function refresh() {
         if (!client) return;
         msg('listStatus', 'Memuat menu...');
@@ -109,6 +228,7 @@
     }
     $('loginBtn').onclick = login; $('logoutBtn').onclick = logout;
     $('refreshBtn').onclick = refresh; $('saveBtn').onclick = save; $('clearBtn').onclick = clearForm;
+    $('refreshOrdersBtn').onclick = refreshOrders;
     $('filter').oninput = renderList; $('exportBtn').onclick = exportJson;
     document.addEventListener('keydown', (event) => {
         if ((event.ctrlKey || event.metaKey) && ['+', '=', '-', '_', '0'].includes(event.key)) {

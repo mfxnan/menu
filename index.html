@@ -38,7 +38,7 @@
                     <span class="brand-location">Outlet Ks Tubun-Rejasari-Purwokerto</span></span>
             </a>
             <nav class="header-actions" aria-label="Navigasi utama">
-                <!-- <a class="text-link" href="#menu">Menu</a> -->
+                <button class="button secondary small hidden" id="trackOrderOpen" type="button">Lihat antrean</button>
                 <a class="button small" href="#kontak">Hubungi outlet</a>
             </nav>
         </header>
@@ -107,7 +107,7 @@
                 <div>
                     <div class="section-kicker">Pesanan Anda</div>
                     <h2 id="checkoutTitle">Keranjang &amp; checkout</h2>
-                    <p>Periksa pesanan sebelum melanjutkan ke WhatsApp.</p>
+                    <p>Pesanan akan dikirim ke admin untuk dikonfirmasi.</p>
                 </div>
                 <button class="icon-button" id="checkoutClose" type="button" aria-label="Tutup keranjang">×</button>
             </div>
@@ -133,34 +133,48 @@
                         <div class="field">
                             <label for="customerPhone">Nomor HP / WhatsApp</label>
                             <input id="customerPhone" name="customer_phone" type="tel" autocomplete="tel"
-                                inputmode="tel" maxlength="24" placeholder="08xx xxxx xxxx" required>
-                        </div>
-                        <div class="field full">
-                            <label for="customerAddress">Alamat pemesan</label>
-                            <textarea id="customerAddress" name="customer_address" autocomplete="street-address"
-                                maxlength="400" rows="3" placeholder="Nama jalan, nomor rumah, dan wilayah"
-                                required></textarea>
-                        </div>
-                        <div class="field">
-                            <label for="orderDate">Tanggal pesanan</label>
-                            <input id="orderDate" name="order_date" type="date" required>
-                        </div>
-                        <div class="field">
-                            <label for="orderTime">Jam pesanan</label>
-                            <input id="orderTime" name="order_time" type="time" required>
+                                inputmode="tel" maxlength="24" placeholder="08xx xxxx xxxx">
                         </div>
                         <div class="field full">
                             <label for="orderNote">Keterangan lainnya <span
                                     class="optional-label">Opsional</span></label>
                             <textarea id="orderNote" name="order_note" maxlength="500" rows="3"
-                                placeholder="Level pedas, catatan lokasi, atau permintaan khusus"></textarea>
+                                placeholder="Catatan untuk pesanan"></textarea>
                         </div>
+                        <fieldset class="field full payment-options">
+                            <legend class="field-label">Metode pembayaran</legend>
+                            <label class="payment-option">
+                                <input type="radio" name="payment_method" value="cash" checked>
+                                <span>Tunai</span>
+                            </label>
+                            <label class="payment-option">
+                                <input type="radio" name="payment_method" value="qris">
+                                <span>QRIS di kasir setelah pesanan dikonfirmasi</span>
+                            </label>
+                        </fieldset>
                     </div>
                 </div>
                 <div class="form-actions checkout-actions">
-                    <button class="button" type="submit">Lanjut ke WhatsApp <span aria-hidden="true">↗</span></button>
+                    <button class="button" type="submit">Kirim pesanan</button>
                 </div>
             </form>
+        </section>
+    </dialog>
+
+    <dialog class="checkout-dialog order-status-dialog" id="orderStatusDialog" aria-labelledby="orderStatusTitle">
+        <section class="dialog-shell checkout-shell order-status-shell">
+            <div class="dialog-top checkout-top">
+                <div>
+                    <div class="section-kicker">Status pesanan</div>
+                    <h2 id="orderStatusTitle">Nomor antrean</h2>
+                </div>
+                <button class="icon-button" id="orderStatusClose" type="button" aria-label="Tutup status pesanan">×</button>
+            </div>
+            <div class="order-status-content" aria-live="polite">
+                <strong class="queue-code" id="orderQueueCode">Memuat...</strong>
+                <p id="orderStatusMessage">Memeriksa status pesanan.</p>
+                <p id="orderPaymentMessage"></p>
+            </div>
         </section>
     </dialog>
 

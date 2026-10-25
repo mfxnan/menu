@@ -6,7 +6,7 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#c8102e">
-    <title>Admin Price List RC KS Tubun</title>
+    <title>Admin Rocket Chicken KS Tubun</title>
     <link rel="stylesheet" href="css/admin.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="js/zoom-lock.js" defer></script>
@@ -16,7 +16,7 @@
 <body>
     <header>
         <div class="wrap">
-            <h1>Admin Price List RC KS Tubun</h1>
+            <h1>Admin Rocket Chicken KS Tubun</h1>
             <div>Panel khusus admin utama • Perubahan tersimpan di Supabase</div>
         </div>
     </header>
@@ -31,6 +31,30 @@
             <div class="actions"><button id="loginBtn">Login</button><button id="logoutBtn"
                     class="secondary hidden">Logout</button></div>
             <div id="authStatus" class="status">Login menggunakan akun yang dibuat di Supabase Authentication.</div>
+        </div>
+        <div id="orderPanel" class="panel hidden">
+            <div class="row">
+                <div><strong>Pesanan dan antrean</strong>
+                    <p class="muted">Pesanan baru diperbarui otomatis setiap 10 detik.</p>
+                </div>
+                <div class="actions"><button id="refreshOrdersBtn" class="secondary">Muat ulang pesanan</button></div>
+            </div>
+            <div id="ordersStatus" class="status">Memeriksa akses admin pesanan...</div>
+            <div class="tablewrap">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Antrean / waktu</th>
+                            <th>Pemesan / menu</th>
+                            <th>Total</th>
+                            <th>Pembayaran</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderRows"></tbody>
+                </table>
+            </div>
         </div>
         <div id="editorPanel" class="panel hidden">
             <strong>Tambah / ubah menu</strong>

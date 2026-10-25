@@ -147,6 +147,28 @@ td input {
     width: 125px
 }
 
+.orders-table {
+    min-width: 900px
+}
+
+.orders-table td {
+    white-space: pre-line
+}
+
+.order-item-list {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    font-size: 12px;
+    white-space: pre-line
+}
+
+.order-action {
+    display: inline-block;
+    margin: 2px;
+    padding: 7px 9px;
+    font-size: 12px
+}
+
 .hidden {
     display: none !important
 }

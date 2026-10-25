@@ -5,6 +5,7 @@ const CONFIG = {
 };
 
 const MENU_TABLE = 'menus';
+const LAST_ORDER_TOKEN_KEY = 'rc-ks-tubun-order-token';
 const supabaseClient = window.supabase?.createClient(CONFIG.supabaseUrl, CONFIG.supabasePublishableKey);
 const menuGrid = document.getElementById('menuGrid');
 const categoryList = document.getElementById('categoryList');
@@ -15,6 +16,22 @@ let activeCategory = '';
 let categoryCarousel = null;
 let toastTimeout;
 const cart = new Map();
+let orderStatusInterval;
+let lastOrderToken = null;
+try {
+    lastOrderToken = localStorage.getItem(LAST_ORDER_TOKEN_KEY);
+} catch {
+    showToast('Penyimpanan lokal browser tidak tersedia; status pesanan tidak tersimpan setelah halaman ditutup.');
+}
+
+const orderStatusLabels = {
+    pending: 'Menunggu konfirmasi admin',
+    accepted: 'Pesanan diterima',
+    rejected: 'Pesanan ditolak. Silakan hubungi staf outlet.',
+    preparing: 'Pesanan sedang disiapkan',
+    ready: 'Pesanan siap diambil',
+    completed: 'Pesanan selesai'
+};
 
 function showToast(message) {
     const toast = document.getElementById('toast');
@@ -197,12 +214,14 @@ function createQuantityControl(item) {
     value.type = 'number';
     value.inputMode = 'numeric';
     value.min = '0';
+    value.max = '99';
     value.step = '1';
     value.value = String(quantity);
     value.setAttribute('aria-label', `Jumlah ${item.name}`);
     value.addEventListener('change', () => setQuantity(item, Number.parseInt(value.value, 10) || 0));
     const increase = makeElement('button', '', '+');
     increase.type = 'button';
+    increase.disabled = quantity >= 99;
     increase.setAttribute('aria-label', `Tambah ${item.name}`);
     increase.addEventListener('click', () => changeQuantity(item, 1));
     control.append(decrease, value, increase);
@@ -217,13 +236,14 @@ function changeQuantity(item, delta) {
 
 function setQuantity(item, quantity) {
     const key = String(item.id);
-    quantity = Math.max(0, Math.floor(quantity));
+    quantity = Math.min(99, Math.max(0, Math.floor(quantity)));
     if (quantity === 0) cart.delete(key);
     else cart.set(key, { item, quantity });
     document.querySelectorAll('.quantity-control').forEach(control => {
         if (control.dataset.itemId !== key) return;
         control.querySelector('.quantity-value').value = String(quantity);
         control.querySelector('button').disabled = quantity === 0;
+        control.querySelectorAll('button')[1].disabled = quantity >= 99;
     });
     updateCartDock();
     if (document.getElementById('checkoutDialog').open) renderCartContents();
@@ -263,55 +283,117 @@ function renderCartContents() {
     document.querySelector('#checkoutForm button[type="submit"]').disabled = cart.size === 0;
 }
 
-function sendOrder(event) {
+async function placeOrder(event) {
     event.preventDefault();
-    if (cart.size === 0) return;
-    const phone = CONFIG.outletWhatsApp.replace(/\D/g, '');
-    if (!phone) {
-        showToast('Nomor WhatsApp outlet belum dikonfigurasi.');
+    if (!supabaseClient) {
+        showToast('Layanan pesanan tidak tersedia. Periksa koneksi internet.');
         return;
     }
-    const form = new FormData(event.currentTarget);
+    if (cart.size === 0) return;
+
+    const checkoutForm = event.currentTarget;
+    const form = new FormData(checkoutForm);
+    const submitButton = checkoutForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = 'Mengirim pesanan...';
     const customerPhone = String(form.get('customer_phone')).trim();
     const phoneDigits = customerPhone.replace(/\D/g, '');
-    if (phoneDigits.length < 8 || phoneDigits.length > 15) {
+    if (customerPhone && (phoneDigits.length < 8 || phoneDigits.length > 15)) {
         showToast('Periksa kembali nomor HP / WhatsApp pemesan.');
         document.getElementById('customerPhone').focus();
+        submitButton.disabled = false;
+        submitButton.textContent = 'Kirim pesanan';
         return;
     }
-    const { subtotal } = getCartTotals();
-    const orderLines = [...cart.values()].map(({ item, quantity }, index) =>
-        `${index + 1}. Nama paket/menu: ${item.name}\n    Jumlah: ${quantity}\n    Harga per box: ${rupiah.format(item.price)}`
-    );
-    const date = new Date(`${form.get('order_date')}T00:00:00`).toLocaleDateString('id-ID', {
-        day: 'numeric', month: 'long', year: 'numeric'
-    });
-    const note = String(form.get('order_note')).trim() || '-';
-    const message = [
-        'Halo Rocket Chicken KS Tubun',
-        '',
-        'Saya ingin melakukan pemesanan dengan rincian berikut:',
-        '',
-        'DATA PEMESAN',
-        `Nama: ${String(form.get('customer_name')).trim()}`,
-        `No. HP: ${customerPhone}`,
-        `Alamat: ${String(form.get('customer_address')).trim()}`,
-        '',
-        'DETAIL PESANAN',
-        ...orderLines,
-        '',
-        'TOTAL PEMESANAN',
-        `Total: ${rupiah.format(subtotal)}`,
-        '',
-        'JADWAL PESANAN',
-        `Tanggal pesanan: ${date}`,
-        `Jam pesanan: ${form.get('order_time')}`,
-        '',
-        `Catatan tambahan: ${note}`,
-        '',
-        'Terima kasih.'
-    ].join('\n');
-    window.location.href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+    let result;
+    try {
+        result = await supabaseClient.rpc('place_order', {
+            p_customer_name: String(form.get('customer_name')).trim(),
+            p_customer_phone: customerPhone || null,
+            p_note: String(form.get('order_note')).trim(),
+            p_payment_method: String(form.get('payment_method')),
+            p_items: [...cart.values()].map(({ item, quantity }) => ({
+                id: String(item.id),
+                quantity
+            }))
+        });
+    } catch (error) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Kirim pesanan';
+        showToast(`Koneksi gagal saat mengirim pesanan: ${error.message}`);
+        return;
+    }
+
+    submitButton.disabled = false;
+    submitButton.textContent = 'Kirim pesanan';
+    const { data, error } = result;
+    if (error) {
+        showToast(`Pesanan gagal dikirim: ${error.message}`);
+        return;
+    }
+    if (!data?.tracking_token || !data?.queue_code) {
+        showToast('Pesanan tersimpan, tetapi nomor antrean tidak diterima. Hubungi admin outlet.');
+        return;
+    }
+
+    lastOrderToken = data.tracking_token;
+    try {
+        localStorage.setItem(LAST_ORDER_TOKEN_KEY, lastOrderToken);
+    } catch {
+        showToast('Simpan nomor antrean ini; status tidak dapat dipulihkan setelah halaman ditutup.');
+    }
+    document.getElementById('trackOrderOpen').classList.remove('hidden');
+    cart.clear();
+    checkoutForm.reset();
+    updateCartDock();
+    document.getElementById('checkoutDialog').close();
+    document.getElementById('orderQueueCode').textContent = data.queue_code;
+    document.getElementById('orderStatusMessage').dataset.status = 'pending';
+    document.getElementById('orderStatusMessage').textContent = 'Menunggu konfirmasi admin.';
+    document.getElementById('orderPaymentMessage').textContent = 'Memeriksa status pembayaran.';
+    document.getElementById('orderStatusDialog').showModal();
+    await refreshOrderStatus();
+    clearInterval(orderStatusInterval);
+    orderStatusInterval = setInterval(refreshOrderStatus, 10000);
+}
+
+async function refreshOrderStatus() {
+    if (!supabaseClient || !lastOrderToken) return;
+    let result;
+    try {
+        result = await supabaseClient.rpc('get_order_status', {
+            p_tracking_token: lastOrderToken
+        });
+    } catch (error) {
+        document.getElementById('orderStatusMessage').dataset.status = 'unknown';
+        document.getElementById('orderStatusMessage').textContent =
+            `Status belum dapat diperbarui: ${error.message}`;
+        return;
+    }
+    const { data, error } = result;
+    if (error) {
+        document.getElementById('orderStatusMessage').dataset.status = 'unknown';
+        document.getElementById('orderStatusMessage').textContent =
+            `Status belum dapat diperbarui: ${error.message}`;
+        return;
+    }
+    if (!data) {
+        document.getElementById('orderStatusMessage').dataset.status = 'unknown';
+        document.getElementById('orderStatusMessage').textContent =
+            'Pesanan tidak ditemukan. Hubungi admin outlet dengan bukti pemesanan.';
+        clearInterval(orderStatusInterval);
+        return;
+    }
+    document.getElementById('orderStatusMessage').dataset.status = data.status;
+    document.getElementById('orderQueueCode').textContent = data.queue_code;
+    document.getElementById('orderStatusMessage').textContent =
+        `${orderStatusLabels[data.status] || 'Status pesanan diperbarui'} · Total ${rupiah.format(data.total_amount)}`;
+    const paymentMethod = data.payment_method === 'qris' ? 'QRIS' : 'Tunai';
+    const paymentStatus = data.payment_status === 'paid' ? 'Sudah dikonfirmasi' : 'Belum dikonfirmasi';
+    document.getElementById('orderPaymentMessage').textContent =
+        `Pembayaran ${paymentMethod}: ${paymentStatus}.`;
+    if (['rejected', 'completed'].includes(data.status)) clearInterval(orderStatusInterval);
 }
 
 function normalizeMenuItem(item) {
@@ -393,8 +475,21 @@ document.getElementById('checkoutOpen').addEventListener('click', () => {
     document.getElementById('checkoutDialog').showModal();
 });
 document.getElementById('checkoutClose').addEventListener('click', () => document.getElementById('checkoutDialog').close());
-document.getElementById('checkoutForm').addEventListener('submit', sendOrder);
+document.getElementById('checkoutForm').addEventListener('submit', placeOrder);
 document.getElementById('checkoutDialog').addEventListener('click', event => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
+});
+document.getElementById('trackOrderOpen').addEventListener('click', async () => {
+    document.getElementById('orderStatusDialog').showModal();
+    await refreshOrderStatus();
+    if (!['rejected', 'completed'].includes(document.getElementById('orderStatusMessage').dataset.status)) {
+        clearInterval(orderStatusInterval);
+        orderStatusInterval = setInterval(refreshOrderStatus, 10000);
+    }
+});
+document.getElementById('orderStatusClose').addEventListener('click', () =>
+    document.getElementById('orderStatusDialog').close());
+document.getElementById('orderStatusDialog').addEventListener('click', event => {
     if (event.target === event.currentTarget) event.currentTarget.close();
 });
 document.getElementById('contactButton').addEventListener('click', event => {
@@ -409,8 +504,5 @@ document.getElementById('contactButton').addEventListener('click', event => {
     event.currentTarget.rel = 'noopener noreferrer';
 });
 
-const today = new Date();
-const localToday = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-document.getElementById('orderDate').min = localToday;
-document.getElementById('orderDate').value = localToday;
+if (lastOrderToken) document.getElementById('trackOrderOpen').classList.remove('hidden');
 loadMenu();
