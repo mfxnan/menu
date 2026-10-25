@@ -18,7 +18,7 @@ Website katalog menu dan pemesanan Rocket Chicken outlet KS Tubun, Rejasari, Pur
 
 - Jumlah setiap menu dapat ditambah atau dikurangi.
 - Formulir checkout meminta nama, nomor HP opsional dengan keyboard angka di ponsel, catatan opsional, dan metode pembayaran tunai atau QRIS.
-- Database menghitung ulang harga berdasarkan menu aktif dan memberi nomor antrean harian.
+- Database menghitung ulang harga berdasarkan menu aktif dan memberi nomor antrean harian dalam format `001-251026` (nomor urut-hari/bulan/tahun). Hitungan kembali ke `001` setiap hari pukul 00.00 WIB.
 - Pelanggan dapat melihat status pesanan menggunakan token pelacakan yang disimpan di browser.
 - QRIS versi MVP dibayar manual menggunakan QR outlet di kasir; admin mengonfirmasi pembayaran.
 
@@ -81,7 +81,7 @@ Frontend memakai Supabase publishable key; key tersebut memang terlihat oleh bro
 
 ### Menyiapkan pemesanan dan admin
 
-1. Di Supabase SQL Editor, jalankan [migrasi pemesanan](supabase/migrations/20261025000000_orders.sql). Migrasi menambah tabel pesanan dan fungsi database untuk memeriksa menu aktif, menghitung total, membuat nomor antrean, melihat status dengan token, dan membatasi operasi admin.
+1. Di Supabase SQL Editor, jalankan [migrasi pemesanan](supabase/migrations/20261025000000_orders.sql). Migrasi menambah tabel pesanan dan fungsi database untuk memeriksa menu aktif, menghitung total, membuat nomor antrean, melihat status dengan token, dan membatasi operasi admin. Jika migrasi pemesanan versi sebelumnya sudah pernah dijalankan, jalankan kembali skrip SQL yang sudah diperbarui ini agar format nomor antrean baru berlaku; skrip menggunakan `create or replace` dan tidak menghapus data pesanan.
 2. Buat atau gunakan akun admin di Supabase Authentication, lalu salin UID akun tersebut.
 3. Daftarkan UID sebagai admin pesanan di SQL Editor:
 
@@ -123,7 +123,7 @@ Proyek dapat diterbitkan pada hosting statis seperti GitHub Pages. Atur URL Supa
 
 ## Batasan MVP
 
-- Pesanan berstatus menunggu konfirmasi sebelum diproses. Nomor antrean diberikan saat pesanan dikirim dan dimulai kembali setiap hari menurut waktu Asia/Jakarta.
+- Pesanan berstatus menunggu konfirmasi sebelum diproses. Nomor antrean diberikan saat pesanan dikirim, dimulai kembali setiap hari pukul 00.00 WIB, dan ditampilkan dengan format `001-251026`.
 - Pesanan tersimpan di database dan tidak hilang ketika pelanggan me-refresh halaman. Token untuk membuka status pesanan terakhir disimpan di browser; status dapat dipulihkan selama penyimpanan lokal tidak dihapus.
 - QRIS belum terhubung ke payment gateway. Pembayaran tidak diverifikasi otomatis; admin harus memastikan pembayaran sebelum menandainya lunas.
 - Nomor telepon opsional; nomor antrean yang muncul setelah pemesanan perlu dicatat pelanggan.

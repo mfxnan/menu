@@ -45,6 +45,20 @@ alter table public.order_items enable row level security;
 revoke all on public.order_admins, public.order_counters, public.orders, public.order_items
     from public, anon, authenticated;
 
+create or replace function public.format_queue_code(p_queue_date date, p_queue_number integer)
+returns text
+language sql
+immutable
+set search_path = pg_catalog
+as $$
+    select
+        case
+            when p_queue_number < 1000 then lpad(p_queue_number::text, 3, '0')
+            else p_queue_number::text
+        end
+        || '-' || to_char(p_queue_date, 'DDMMYY');
+$$;
+
 create or replace function public.place_order(
     p_customer_name text,
     p_customer_phone text,
@@ -164,7 +178,7 @@ begin
 
     return jsonb_build_object(
         'tracking_token', v_tracking_token,
-        'queue_code', 'A-' || to_char(v_queue_date, 'YYYYMMDD') || '-' || lpad(v_queue_number::text, 3, '0'),
+        'queue_code', public.format_queue_code(v_queue_date, v_queue_number),
         'total_amount', v_total,
         'status', 'pending',
         'payment_method', p_payment_method
@@ -180,7 +194,7 @@ security definer
 set search_path = pg_catalog, public, pg_temp
 as $$
     select jsonb_build_object(
-        'queue_code', 'A-' || to_char(o.queue_date, 'YYYYMMDD') || '-' || lpad(o.queue_number::text, 3, '0'),
+        'queue_code', public.format_queue_code(o.queue_date, o.queue_number),
         'customer_name', o.customer_name,
         'status', o.status,
         'payment_method', o.payment_method,
@@ -220,7 +234,7 @@ begin
             end as priority,
             jsonb_build_object(
                 'id', o.id,
-                'queue_code', 'A-' || to_char(o.queue_date, 'YYYYMMDD') || '-' || lpad(o.queue_number::text, 3, '0'),
+                'queue_code', public.format_queue_code(o.queue_date, o.queue_number),
                 'customer_name', o.customer_name,
                 'customer_phone', o.customer_phone,
                 'note', o.note,
@@ -316,6 +330,7 @@ end;
 $$;
 
 revoke all on function public.place_order(text, text, text, text, jsonb) from public, anon, authenticated;
+revoke all on function public.format_queue_code(date, integer) from public, anon, authenticated;
 revoke all on function public.get_order_status(uuid) from public, anon, authenticated;
 revoke all on function public.admin_list_orders() from public, anon, authenticated;
 revoke all on function public.admin_update_order(uuid, text, text) from public, anon, authenticated;
