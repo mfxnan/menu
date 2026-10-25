@@ -276,14 +276,6 @@ function updatePaymentSummary(clampToTotal = false) {
     document.getElementById('remainingPayment').textContent = rupiah.format(Math.max(0, subtotal - downPayment));
 }
 
-function syncFulfillmentFields() {
-    const isDelivery = document.querySelector('input[name="fulfillment"]:checked').value === 'delivery';
-    const deliveryAddressField = document.getElementById('deliveryAddressField');
-    const deliveryAddress = document.getElementById('deliveryAddress');
-    deliveryAddressField.hidden = !isDelivery;
-    deliveryAddress.required = isDelivery;
-}
-
 function sendOrder(event) {
     event.preventDefault();
     if (cart.size === 0) return;
@@ -307,15 +299,12 @@ function sendOrder(event) {
         document.getElementById('downPayment').focus();
         return;
     }
-    const isDelivery = form.get('fulfillment') === 'delivery';
-    const fulfillment = isDelivery ? 'Diantar' : 'Ambil sendiri';
     const orderLines = [...cart.values()].map(({ item, quantity }, index) =>
         `${index + 1}. Nama paket/menu: ${item.name}\n    Jumlah: ${quantity}\n    Harga per box: ${rupiah.format(item.price)}`
     );
     const date = new Date(`${form.get('order_date')}T00:00:00`).toLocaleDateString('id-ID', {
         day: 'numeric', month: 'long', year: 'numeric'
     });
-    const deliveryAddress = isDelivery ? String(form.get('delivery_address')).trim() : '-';
     const note = String(form.get('order_note')).trim() || '-';
     const message = [
         'Halo Rocket Chicken KS Tubun',
@@ -339,10 +328,6 @@ function sendOrder(event) {
         `Tanggal pesanan: ${date}`,
         `Jam pesanan: ${form.get('order_time')}`,
         '',
-        'PENGAMBILAN/PENGANTARAN',
-        `Metode: ${fulfillment}`,
-        `Alamat pengantaran: ${deliveryAddress}`,
-        ...(isDelivery ? ['Ongkir: dibahas melalui WhatsApp'] : []),
         `Catatan tambahan: ${note}`,
         '',
         'Terima kasih.'
@@ -430,7 +415,6 @@ document.getElementById('checkoutOpen').addEventListener('click', () => {
 });
 document.getElementById('checkoutClose').addEventListener('click', () => document.getElementById('checkoutDialog').close());
 document.getElementById('checkoutForm').addEventListener('submit', sendOrder);
-document.querySelectorAll('input[name="fulfillment"]').forEach(input => input.addEventListener('change', syncFulfillmentFields));
 document.getElementById('checkoutDialog').addEventListener('click', event => {
     if (event.target === event.currentTarget) event.currentTarget.close();
 });
@@ -450,5 +434,4 @@ const today = new Date();
 const localToday = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 document.getElementById('orderDate').min = localToday;
 document.getElementById('orderDate').value = localToday;
-syncFulfillmentFields();
 loadMenu();
