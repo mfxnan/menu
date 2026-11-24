@@ -1,9 +1,12 @@
-# Gambar Menu
+# Gambar Menu & Aset Lokal
 
-Folder ini digunakan untuk menyimpan gambar-gambar menu Rocket Chicken KS Tubun.
+Folder ini menyimpan seluruh foto menu, logo, hero banner, dan gambar pratinjau link (`og-image.jpg`) secara lokal.
 
-Simpan file gambar di folder ini, lalu gunakan URL publik gambar tersebut pada kolom `image_url` di data menu. Contoh format URL GitHub Pages:
+- Gunakan format **WebP** (lebar maks ±800px) dan nama file **huruf kecil tanpa spasi**, misalnya `paket-rocket-1.webp`.
+- Di `admin.html` atau `data/menus.json`, isi kolom `image_url` menggunakan **path relatif**:
 
-`https://mfxnan.github.io/menu/img/nama-gambar.jpg`
+```text
+img/nama-gambar.webp
+```
 
-Gunakan nama file yang singkat dan jelas. Pastikan URL dapat diakses publik dan langsung menuju file gambar.
+Dengan path relatif, semua gambar otomatis berjalan di GitHub Pages, Cloudflare Pages, domain kustom, maupun localhost tanpa perlu mengubah URL.

@@ -1,239 +1,576 @@
 (() => {
-    const $ = id => document.getElementById(id);
-    const SUPABASE_URL = 'https://ulpckwlazrnhxvjthlgh.supabase.co';
-    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_sxy7RSWC7Lo5ggQyPTvjRA_fH_xdsLJ';
-    const client = window.supabase?.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-    });
-    let menu = [];
-    let ordersRefreshTimer;
-    let orderAccessReady = false;
-    const fmt = n => 'Rp' + Number(n).toLocaleString('id-ID');
-    const msg = (id, text) => $(id).textContent = text;
-    const show = (id, yes = true) => $(id).classList.toggle('hidden', !yes);
-    const orderStatuses = {
-        pending: 'Menunggu konfirmasi',
-        accepted: 'Diterima',
-        rejected: 'Ditolak',
-        preparing: 'Sedang disiapkan',
-        ready: 'Siap diambil',
-        completed: 'Selesai'
+    const DATA_URL = 'data/menus.json';
+    const DRAFT_STORAGE_KEY = 'rc-ks-tubun-menus-draft-v1';
+
+    const DEFAULT_CATEGORY_ORDER = [
+        'Paket Promo',
+        'Paket Catering',
+        'Paket Segar',
+        'Lainnya',
+        'Chicken Produk',
+        'Paket Bucket',
+        'Ayam Utuh',
+        'Paket Rocket',
+        'Paket Sehat',
+        'Paket Roma',
+        'Paket Geprek',
+        'Paket Geprek Kosek',
+        'Paket Geprek Matah',
+        'Paket Geprek Terasi',
+        'Paket Hot Cheesy',
+        'Minuman'
+    ];
+
+    const DEFAULT_OUTLET = {
+        name: 'ROCKET CHICKEN',
+        branch: 'Outlet KS Tubun - Rejasari - Purwokerto',
+        address: 'Jl. KS Tubun, Rejasari, Purwokerto Barat, Banyumas',
+        hours: 'Buka setiap hari',
+        whatsapp: '6285725489277',
+        whatsapp_message: 'Halo Rocket Chicken KS Tubun, saya ingin bertanya tentang menu dan harga.',
+        maps_url: '',
+        instagram_url: '',
+        tiktok_url: '',
+        facebook_url: ''
     };
-    async function initAuth() {
-        if (!client) { msg('authStatus', 'Library Supabase gagal dimuat. Periksa koneksi internet.'); return; }
-        msg('authStatus', 'Memeriksa sesi admin...');
-        const { data, error } = await client.auth.getSession();
-        if (error) { msg('authStatus', 'Gagal membaca sesi: ' + error.message); return; }
-        if (data.session) await afterLogin();
-        else { show('editorPanel', false); show('listPanel', false); msg('authStatus', 'Masukkan email dan password admin Supabase.'); }
-    }
-    async function afterLogin() {
-        const { data, error } = await client.auth.getUser();
-        if (error || !data.user) { msg('authStatus', 'Sesi tidak valid. Login ulang.'); return; }
-        msg('authStatus', 'Login sebagai ' + data.user.email + '. Jika UID bukan admin yang diizinkan RLS, operasi database akan ditolak.');
-        show('logoutBtn', true); show('editorPanel', true); show('listPanel', true);
-        await refresh();
-        await refreshOrders();
-        clearInterval(ordersRefreshTimer);
-        if (orderAccessReady) ordersRefreshTimer = setInterval(refreshOrders, 10000);
-    }
-    async function login() {
-        if (!client) { msg('authStatus', 'Hubungkan Supabase dulu.'); return; }
-        const { data, error } = await client.auth.signInWithPassword({ email: $('email').value.trim(), password: $('password').value });
-        if (error) { msg('authStatus', 'Login gagal: ' + error.message); return; }
-        await afterLogin();
-    }
-    async function logout() {
-        if (client) {
-            const { error } = await client.auth.signOut();
-            if (error) { msg('authStatus', 'Logout gagal: ' + error.message); return; }
-        }
-        clearInterval(ordersRefreshTimer);
-        show('editorPanel', false); show('listPanel', false); show('orderPanel', false); show('logoutBtn', false);
-        msg('authStatus', 'Kamu sudah logout.');
-    }
-    async function refreshOrders() {
-        if (!client) return;
-        msg('ordersStatus', 'Memuat pesanan...');
-        const { data, error } = await client.rpc('admin_list_orders');
-        if (error) {
-            orderAccessReady = false;
-            clearInterval(ordersRefreshTimer);
-            show('orderPanel', false);
-            msg('authStatus', 'Login berhasil, tetapi akses admin pesanan belum disiapkan. Tambahkan UID admin pada tabel order_admins setelah migrasi database diterapkan.');
-            return;
-        }
-        orderAccessReady = true;
-        show('orderPanel', true);
-        renderOrders(data || []);
-        msg('ordersStatus', `Berhasil memuat ${data?.length || 0} pesanan terbaru.`);
-    }
-    function renderOrders(orders) {
-        const rows = $('orderRows');
-        rows.replaceChildren();
-        if (!orders.length) {
-            const row = document.createElement('tr');
-            const cell = document.createElement('td');
-            cell.colSpan = 6;
-            cell.textContent = 'Belum ada pesanan.';
-            row.append(cell);
-            rows.append(row);
-            return;
-        }
-        orders.forEach(order => {
-            const row = document.createElement('tr');
-            const queue = document.createElement('td');
-            queue.textContent = `${order.queue_code}\n${new Date(order.created_at).toLocaleString('id-ID')}`;
 
-            const customer = document.createElement('td');
-            customer.textContent = `${order.customer_name}${order.customer_phone ? `\n${order.customer_phone}` : ''}`;
-            const items = document.createElement('ul');
-            items.className = 'order-item-list';
-            (order.items || []).forEach(item => {
-                const itemRow = document.createElement('li');
-                itemRow.textContent = `${item.quantity} × ${item.menu_name} — ${fmt(item.line_total)}`;
-                items.append(itemRow);
-            });
-            if (order.note) {
-                const note = document.createElement('p');
-                note.className = 'muted';
-                note.textContent = `Catatan: ${order.note}`;
-                customer.append(note);
-            }
-            customer.append(items);
+    const $ = id => document.getElementById(id);
+    const fmt = n => 'Rp' + Number(n || 0).toLocaleString('id-ID');
+    const msg = (id, text) => {
+        const el = $(id);
+        if (!el) return;
+        el.textContent = text;
+        el.classList.remove('hidden');
+    };
 
-            const total = document.createElement('td');
-            total.textContent = fmt(order.total_amount);
+    let state = {
+        updated_at: new Date().toISOString(),
+        outlet: { ...DEFAULT_OUTLET },
+        category_order: [...DEFAULT_CATEGORY_ORDER],
+        menus: []
+    };
+    let dirtyCount = 0;
 
-            const payment = document.createElement('td');
-            const method = order.payment_method === 'qris' ? 'QRIS' : 'Tunai';
-            payment.textContent = `${method}\n${order.payment_status === 'paid' ? 'Dikonfirmasi' : 'Belum dibayar'}`;
+    function generateId() {
+        if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+        return `menu-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
 
-            const status = document.createElement('td');
-            status.textContent = orderStatuses[order.status] || order.status;
+    function normalizeItem(raw) {
+        return {
+            id: String(raw?.id || generateId()),
+            name: String(raw?.name || '').trim(),
+            category: String(raw?.display_category || raw?.category || 'Lainnya').trim() || 'Lainnya',
+            description: String(raw?.description || '').trim(),
+            price: Number.isFinite(Number(raw?.price)) ? Math.max(0, Math.round(Number(raw.price))) : 0,
+            image_url: String(raw?.image_url || '').trim(),
+            search_terms: String(raw?.search_terms || '').trim(),
+            active: raw?.active !== undefined ? Boolean(raw.active) : true,
+            sort_order: Number.isFinite(Number(raw?.sort_order)) ? Number(raw.sort_order) : 100,
+            updated_at: raw?.updated_at || new Date().toISOString()
+        };
+    }
 
-            const actions = document.createElement('td');
-            const addAction = (label, nextStatus, nextPaymentStatus, className = 'order-action') => {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = className;
-                button.textContent = label;
-                button.addEventListener('click', () => updateOrder(order, nextStatus, nextPaymentStatus));
-                actions.append(button);
+    function normalizeDataset(payload) {
+        if (Array.isArray(payload)) {
+            return {
+                updated_at: new Date().toISOString(),
+                outlet: { ...state.outlet },
+                category_order: [...state.category_order],
+                menus: payload.map(normalizeItem).filter(x => x.name)
             };
-            if (order.status === 'pending') {
-                addAction('Terima', 'accepted', null);
-                addAction('Tolak', 'rejected', null, 'danger order-action');
-            } else if (order.status === 'accepted') {
-                addAction('Mulai siapkan', 'preparing', null);
-            } else if (order.status === 'preparing') {
-                addAction('Siap diambil', 'ready', null);
-            } else if (order.status === 'ready') {
-                addAction('Selesaikan', 'completed', null);
-            }
-            if (order.payment_status !== 'paid' && ['accepted', 'preparing', 'ready', 'completed'].includes(order.status)) {
-                addAction('Konfirmasi bayar', null, 'paid', 'secondary order-action');
-            }
-            row.append(queue, customer, total, payment, status, actions);
-            rows.append(row);
-        });
+        }
+        return {
+            updated_at: payload?.updated_at || new Date().toISOString(),
+            outlet: { ...DEFAULT_OUTLET, ...(payload?.outlet || {}) },
+            category_order: Array.isArray(payload?.category_order) && payload.category_order.length
+                ? payload.category_order.map(c => String(c).trim()).filter(Boolean)
+                : [...DEFAULT_CATEGORY_ORDER],
+            menus: Array.isArray(payload?.menus)
+                ? payload.menus.map(normalizeItem).filter(x => x.name)
+                : []
+        };
     }
-    async function updateOrder(order, status, paymentStatus) {
-        const { error } = await client.rpc('admin_update_order', {
-            p_order_id: order.id,
-            p_status: status,
-            p_payment_status: paymentStatus
+
+    function updateDraftBadge() {
+        const badge = $('draftBadge');
+        if (dirtyCount > 0) {
+            badge.textContent = `${dirtyCount} perubahan belum diunduh`;
+            badge.classList.add('dirty');
+        } else {
+            badge.textContent = 'Data sesuai situs';
+            badge.classList.remove('dirty');
+        }
+    }
+
+    function persistDraft(markDirty = true) {
+        state.updated_at = new Date().toISOString();
+        if (markDirty) dirtyCount += 1;
+        updateDraftBadge();
+        try {
+            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ state, dirtyCount }));
+        } catch {
+            // Ignore quota errors in private mode
+        }
+    }
+
+    function clearStoredDraft() {
+        dirtyCount = 0;
+        updateDraftBadge();
+        try {
+            localStorage.removeItem(DRAFT_STORAGE_KEY);
+        } catch {
+            // Ignore
+        }
+    }
+
+    function fillOutletForm() {
+        const o = state.outlet;
+        $('outletName').value = o.name || '';
+        $('outletBranch').value = o.branch || '';
+        $('outletAddress').value = o.address || '';
+        $('outletHours').value = o.hours || '';
+        $('outletWhatsapp').value = o.whatsapp || '';
+        $('outletWaMessage').value = o.whatsapp_message || '';
+        $('outletMaps').value = o.maps_url || '';
+        $('outletInstagram').value = o.instagram_url || '';
+        $('outletTiktok').value = o.tiktok_url || '';
+        $('outletFacebook').value = o.facebook_url || '';
+    }
+
+    function getAllCategories() {
+        const set = new Set([...state.category_order, ...state.menus.map(m => m.category).filter(Boolean)]);
+        return [...set];
+    }
+
+    function refreshCategoryControls() {
+        const categories = getAllCategories();
+        const datalist = $('categorySuggestions');
+        datalist.replaceChildren();
+        categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            datalist.append(opt);
         });
-        if (error) {
-            msg('ordersStatus', 'Gagal memperbarui pesanan: ' + error.message);
+
+        const select = $('categoryFilter');
+        const current = select.value;
+        select.replaceChildren();
+        const allOpt = document.createElement('option');
+        allOpt.value = '';
+        allOpt.textContent = 'Semua kategori';
+        select.append(allOpt);
+        categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            select.append(opt);
+        });
+        if (categories.includes(current)) select.value = current;
+    }
+
+    function safePreviewUrl(url) {
+        if (!url) return '';
+        try {
+            const parsed = new URL(url, window.location.href);
+            return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+        } catch {
+            return '';
+        }
+    }
+
+    function updateImagePreview() {
+        const box = $('imagePreviewBox');
+        box.replaceChildren();
+        const url = safePreviewUrl($('imageUrl').value.trim());
+        if (!url) {
+            const span = document.createElement('span');
+            span.className = 'muted';
+            span.textContent = 'Pratinjau gambar';
+            box.append(span);
             return;
         }
-        await refreshOrders();
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Pratinjau foto menu';
+        img.onerror = () => {
+            box.replaceChildren();
+            const span = document.createElement('span');
+            span.className = 'muted';
+            span.textContent = 'Gambar tidak ditemukan';
+            box.append(span);
+        };
+        box.append(img);
     }
-    async function refresh() {
-        if (!client) return;
-        msg('listStatus', 'Memuat menu...');
-        const { data, error } = await client.from('menus').select('*').order('sort_order', { ascending: true }).order('name');
-        if (error) { msg('listStatus', 'Gagal membaca menu: ' + error.message + '\nPeriksa SQL, RLS, dan koneksi.'); return; }
-        menu = data || []; renderList(); msg('listStatus', 'Berhasil memuat ' + menu.length + ' baris menu.');
-    }
+
     function renderList() {
         const q = $('filter').value.toLocaleLowerCase('id-ID').trim();
-        const rows = $('rows'); rows.replaceChildren();
-        menu.filter(x => (x.name + ' ' + (x.display_category || x.category) + ' ' + x.description).toLocaleLowerCase('id-ID').includes(q)).forEach(x => {
+        const catFilter = $('categoryFilter').value;
+        const statusFilter = $('statusFilter').value;
+
+        const filtered = state.menus.filter(item => {
+            if (catFilter && item.category !== catFilter) return false;
+            if (statusFilter === 'active' && !item.active) return false;
+            if (statusFilter === 'inactive' && item.active) return false;
+            if (!q) return true;
+            const text = `${item.name} ${item.category} ${item.description} ${item.search_terms}`.toLocaleLowerCase('id-ID');
+            return text.includes(q);
+        }).sort((a, b) => {
+            if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+            return a.name.localeCompare(b.name, 'id', { sensitivity: 'base' });
+        });
+
+        const activeCount = state.menus.filter(m => m.active).length;
+        msg('listStatus', `Menampilkan ${filtered.length} dari ${state.menus.length} menu (${activeCount} aktif, ${state.menus.length - activeCount} nonaktif).`);
+
+        const rows = $('rows');
+        rows.replaceChildren();
+
+        if (!filtered.length) {
             const tr = document.createElement('tr');
-            const td1 = document.createElement('td'); td1.textContent = x.name + '\n' + x.description;
-            const td2 = document.createElement('td'); td2.textContent = x.display_category || x.category;
-            const td3 = document.createElement('td'); td3.textContent = fmt(x.price);
-            const td4 = document.createElement('td'); td4.textContent = x.updated_at ? new Date(x.updated_at).toLocaleString('id-ID') : '—';
-            const td5 = document.createElement('td'); const edit = document.createElement('button'); edit.textContent = 'Edit'; edit.onclick = () => editItem(x);
-            const del = document.createElement('button'); del.textContent = x.active ? 'Nonaktifkan' : 'Aktifkan'; del.className = x.active ? 'danger' : 'secondary'; del.style.marginLeft = '5px'; del.onclick = () => toggleActive(x);
-            td5.append(edit, del); tr.append(td1, td2, td3, td4, td5); rows.append(tr);
+            const td = document.createElement('td');
+            td.colSpan = 5;
+            td.className = 'muted';
+            td.textContent = 'Tidak ada menu yang cocok dengan filter.';
+            tr.append(td);
+            rows.append(tr);
+            return;
+        }
+
+        filtered.forEach(item => {
+            const tr = document.createElement('tr');
+
+            const tdMenu = document.createElement('td');
+            const wrap = document.createElement('div');
+            wrap.className = 'menu-cell';
+            const previewUrl = safePreviewUrl(item.image_url);
+            if (previewUrl) {
+                const img = document.createElement('img');
+                img.className = 'menu-thumb';
+                img.src = previewUrl;
+                img.alt = '';
+                img.loading = 'lazy';
+                img.onerror = () => img.replaceWith(makeEmptyThumb());
+                wrap.append(img);
+            } else {
+                wrap.append(makeEmptyThumb());
+            }
+            const textWrap = document.createElement('div');
+            const title = document.createElement('span');
+            title.className = 'menu-title';
+            title.textContent = item.name;
+            const desc = document.createElement('span');
+            desc.className = 'menu-desc';
+            desc.textContent = item.description || '—';
+            textWrap.append(title, desc);
+            wrap.append(textWrap);
+            tdMenu.append(wrap);
+
+            const tdCat = document.createElement('td');
+            tdCat.textContent = item.category;
+
+            const tdPrice = document.createElement('td');
+            const priceWrap = document.createElement('div');
+            priceWrap.className = 'price-inline-wrap';
+            const priceInput = document.createElement('input');
+            priceInput.type = 'number';
+            priceInput.min = '0';
+            priceInput.step = '500';
+            priceInput.className = 'price-inline';
+            priceInput.value = String(item.price);
+            priceInput.setAttribute('aria-label', `Harga ${item.name}`);
+            priceInput.addEventListener('change', () => {
+                const nextPrice = Number(priceInput.value);
+                if (priceInput.value === '' || !Number.isSafeInteger(nextPrice) || nextPrice < 0) {
+                    priceInput.value = String(item.price);
+                    msg('syncStatus', `Harga untuk "${item.name}" harus bilangan bulat 0 atau lebih.`);
+                    return;
+                }
+                if (nextPrice !== item.price) {
+                    item.price = nextPrice;
+                    item.updated_at = new Date().toISOString();
+                    persistDraft(true);
+                    msg('syncStatus', `Harga "${item.name}" diubah menjadi ${fmt(nextPrice)}. Jangan lupa klik Unduh menus.json setelah selesai.`);
+                }
+            });
+            priceWrap.append(priceInput);
+            tdPrice.append(priceWrap);
+
+            const tdStatus = document.createElement('td');
+            const pill = document.createElement('span');
+            pill.className = `pill ${item.active ? 'active' : 'inactive'}`;
+            pill.textContent = item.active ? 'Aktif' : 'Nonaktif';
+            tdStatus.append(pill);
+
+            const tdAct = document.createElement('td');
+            const actWrap = document.createElement('div');
+            actWrap.className = 'row-actions';
+
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'small';
+            editBtn.textContent = 'Edit';
+            editBtn.addEventListener('click', () => editItem(item));
+
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'small secondary';
+            toggleBtn.textContent = item.active ? 'Nonaktifkan' : 'Aktifkan';
+            toggleBtn.addEventListener('click', () => toggleActive(item));
+
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'small danger';
+            delBtn.textContent = 'Hapus';
+            delBtn.addEventListener('click', () => deleteItem(item));
+
+            actWrap.append(editBtn, toggleBtn, delBtn);
+            tdAct.append(actWrap);
+
+            tr.append(tdMenu, tdCat, tdPrice, tdStatus, tdAct);
+            rows.append(tr);
         });
     }
-    function editItem(x) {
-        $('itemId').value = x.id;
-        $('name').value = x.name;
-        $('category').value = x.display_category || x.category;
-        $('sourceCategory').value = x.category || '';
-        $('description').value = x.description || '';
-        $('imageUrl').value = x.image_url || '';
-        $('price').value = x.price;
-        $('searchTerms').value = x.search_terms || '';
-        $('saveBtn').textContent = 'Simpan perubahan';
-        window.scrollTo({ top: $('editorPanel').offsetTop, behavior: 'smooth' });
+
+    function makeEmptyThumb() {
+        const div = document.createElement('div');
+        div.className = 'menu-thumb-empty';
+        div.textContent = 'No img';
+        return div;
     }
-    function clearForm() { $('itemId').value = ''; $('name').value = ''; $('sourceCategory').value = ''; $('description').value = ''; $('imageUrl').value = ''; $('price').value = ''; $('searchTerms').value = ''; $('saveBtn').textContent = 'Simpan menu'; msg('saveStatus', 'Form dikosongkan.'); }
-    async function save() {
-        const name = $('name').value.trim(), price = Number($('price').value), category = $('category').value;
-        if (!name || $('price').value === '' || !Number.isSafeInteger(price) || price < 0) { msg('saveStatus', 'Nama wajib diisi dan harga harus bilangan bulat nol atau lebih.'); return; }
+
+    function editItem(item) {
+        $('itemId').value = item.id;
+        $('name').value = item.name;
+        $('category').value = item.category;
+        $('price').value = String(item.price);
+        $('sortOrder').value = String(item.sort_order ?? 100);
+        $('itemActive').checked = Boolean(item.active);
+        $('description').value = item.description || '';
+        $('imageUrl').value = item.image_url || '';
+        $('searchTerms').value = item.search_terms || '';
+        $('saveBtn').textContent = 'Simpan perubahan menu';
+        updateImagePreview();
+        msg('saveStatus', `Sedang mengedit "${item.name}".`);
+        $('editorPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function clearForm() {
+        $('itemId').value = '';
+        $('name').value = '';
+        $('category').value = '';
+        $('price').value = '';
+        $('sortOrder').value = '100';
+        $('itemActive').checked = true;
+        $('description').value = '';
+        $('imageUrl').value = '';
+        $('searchTerms').value = '';
+        $('saveBtn').textContent = 'Tambah menu ke draft';
+        updateImagePreview();
+        msg('saveStatus', 'Form dikosongkan.');
+    }
+
+    function saveItem() {
+        const name = $('name').value.trim();
+        const category = $('category').value.trim() || 'Lainnya';
+        const price = Number($('price').value);
+        const sortOrder = Number($('sortOrder').value);
         const imageUrl = $('imageUrl').value.trim();
-        if (imageUrl) {
+
+        if (!name || $('price').value === '' || !Number.isSafeInteger(price) || price < 0) {
+            msg('saveStatus', 'Nama menu wajib diisi dan harga harus bilangan bulat 0 atau lebih.');
+            return;
+        }
+        if (imageUrl && !safePreviewUrl(imageUrl)) {
+            msg('saveStatus', 'Path/URL gambar tidak valid. Gunakan path relatif (contoh: img/bucket1.webp) atau URL HTTP/HTTPS.');
+            return;
+        }
+
+        const id = $('itemId').value;
+        const now = new Date().toISOString();
+        const payload = {
+            id: id || generateId(),
+            name,
+            category,
+            description: $('description').value.trim(),
+            price,
+            image_url: imageUrl,
+            search_terms: $('searchTerms').value.trim(),
+            active: $('itemActive').checked,
+            sort_order: Number.isFinite(sortOrder) ? Math.max(0, Math.round(sortOrder)) : 100,
+            updated_at: now
+        };
+
+        if (!state.category_order.includes(category)) {
+            state.category_order.push(category);
+        }
+
+        const existingIndex = id ? state.menus.findIndex(m => m.id === id) : -1;
+        if (existingIndex >= 0) {
+            state.menus[existingIndex] = payload;
+            msg('saveStatus', `Diperbarui di draft: ${payload.name} — ${fmt(payload.price)}.`);
+        } else {
+            state.menus.unshift(payload);
+            msg('saveStatus', `Ditambahkan ke draft: ${payload.name} — ${fmt(payload.price)}.`);
+        }
+
+        persistDraft(true);
+        refreshCategoryControls();
+        renderList();
+        clearForm();
+        msg('syncStatus', `Perubahan "${payload.name}" masuk draft. Klik Unduh menus.json jika sudah selesai.`);
+    }
+
+    function toggleActive(item) {
+        item.active = !item.active;
+        item.updated_at = new Date().toISOString();
+        persistDraft(true);
+        renderList();
+        msg('syncStatus', `"${item.name}" sekarang ${item.active ? 'Aktif' : 'Nonaktif'} di draft.`);
+    }
+
+    function deleteItem(item) {
+        if (!confirm(`Hapus permanen menu "${item.name}" dari daftar?`)) return;
+        state.menus = state.menus.filter(m => m.id !== item.id);
+        if ($('itemId').value === item.id) clearForm();
+        persistDraft(true);
+        refreshCategoryControls();
+        renderList();
+        msg('syncStatus', `"${item.name}" dihapus dari draft.`);
+    }
+
+    function saveOutlet() {
+        const validateUrl = (val, label) => {
+            if (!val) return '';
             try {
-                const parsedImageUrl = new URL(imageUrl);
-                if (!['http:', 'https:'].includes(parsedImageUrl.protocol)) throw new Error();
+                const parsed = new URL(val);
+                if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+                return parsed.href;
             } catch {
-                msg('saveStatus', 'URL gambar harus berupa alamat publik HTTP atau HTTPS yang valid.');
-                return;
+                throw new Error(`${label} harus berupa URL lengkap diawali https://`);
+            }
+        };
+
+        try {
+            state.outlet = {
+                name: $('outletName').value.trim() || 'ROCKET CHICKEN',
+                branch: $('outletBranch').value.trim(),
+                address: $('outletAddress').value.trim(),
+                hours: $('outletHours').value.trim(),
+                whatsapp: $('outletWhatsapp').value.replace(/\D/g, ''),
+                whatsapp_message: $('outletWaMessage').value.trim(),
+                maps_url: validateUrl($('outletMaps').value.trim(), 'Link Google Maps'),
+                instagram_url: validateUrl($('outletInstagram').value.trim(), 'Link Instagram'),
+                tiktok_url: validateUrl($('outletTiktok').value.trim(), 'Link TikTok'),
+                facebook_url: validateUrl($('outletFacebook').value.trim(), 'Link Facebook')
+            };
+        } catch (error) {
+            msg('outletStatus', error.message);
+            return;
+        }
+
+        persistDraft(true);
+        msg('outletStatus', 'Info outlet & link tombol kontak diterapkan ke draft. Klik Unduh menus.json untuk menerbitkan.');
+        msg('syncStatus', 'Info outlet diperbarui di draft. Klik Unduh menus.json untuk menyimpan file.');
+    }
+
+    function downloadJson() {
+        state.updated_at = new Date().toISOString();
+        const blob = new Blob([JSON.stringify(state, null, 2) + '\n'], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'menus.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        dirtyCount = 0;
+        updateDraftBadge();
+        try {
+            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ state, dirtyCount: 0 }));
+        } catch {
+            // Ignore
+        }
+        msg('syncStatus', 'File menus.json berhasil diunduh! Unggah ke folder data/menus.json di GitHub untuk menerbitkan perubahan.');
+    }
+
+    function handleImport(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const parsed = JSON.parse(String(reader.result));
+                state = normalizeDataset(parsed);
+                persistDraft(true);
+                fillOutletForm();
+                refreshCategoryControls();
+                renderList();
+                msg('syncStatus', `Berhasil mengimpor ${state.menus.length} menu dari "${file.name}".`);
+            } catch (error) {
+                msg('syncStatus', `File JSON tidak valid: ${error.message}`);
+            }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    async function loadFromSite(force = false) {
+        if (!force) {
+            try {
+                const saved = JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) || 'null');
+                if (saved?.state?.menus?.length && saved.dirtyCount > 0) {
+                    state = normalizeDataset(saved.state);
+                    dirtyCount = saved.dirtyCount;
+                    fillOutletForm();
+                    refreshCategoryControls();
+                    renderList();
+                    updateDraftBadge();
+                    msg('syncStatus', `Memulihkan draft lokal (${dirtyCount} perubahan belum diunduh). Klik "Reset ke data situs" untuk membuang draft.`);
+                    return;
+                }
+            } catch {
+                // Ignore corrupted draft
             }
         }
-        const displayCategory = category;
-        const payload = {
-            name,
-            price,
-            category: $('sourceCategory').value.trim() || displayCategory,
-            display_category: displayCategory,
-            description: $('description').value.trim(),
-            image_url: imageUrl || null,
-            search_terms: $('searchTerms').value.trim(),
-            active: true,
-            updated_at: new Date().toISOString()
-        };
-        const id = $('itemId').value; msg('saveStatus', 'Menyimpan...');
-        const result = id ? await client.from('menus').update(payload).eq('id', id).select().single() : await client.from('menus').insert(payload).select().single();
-        if (result.error) { msg('saveStatus', 'Gagal menyimpan: ' + result.error.message); return; }
-        msg('saveStatus', 'Berhasil disimpan: ' + result.data.name + ' — ' + fmt(result.data.price));
-        clearForm(); await refresh();
+
+        msg('syncStatus', 'Memuat data terbaru dari data/menus.json...');
+        try {
+            const res = await fetch(DATA_URL, { cache: 'no-cache' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            state = normalizeDataset(data);
+            clearStoredDraft();
+            fillOutletForm();
+            refreshCategoryControls();
+            renderList();
+            msg('syncStatus', `Berhasil memuat ${state.menus.length} menu dari data/menus.json.`);
+        } catch (error) {
+            msg('syncStatus', `Gagal membaca data/menus.json (${error.message}). Kamu tetap bisa memakai tombol "Impor JSON" untuk membuka file lokal.`);
+            fillOutletForm();
+            refreshCategoryControls();
+            renderList();
+        }
     }
-    async function toggleActive(x) {
-        const nextActive = !x.active;
-        const action = nextActive ? 'aktifkan' : 'nonaktifkan';
-        if (!confirm(`${action[0].toUpperCase()}${action.slice(1)} "${x.name}"?`)) return;
-        const { error } = await client.from('menus').update({ active: nextActive, updated_at: new Date().toISOString() }).eq('id', x.id);
-        if (error) { msg('listStatus', 'Gagal: ' + error.message); return; } await refresh();
-    }
-    function exportJson() {
-        const blob = new Blob([JSON.stringify(menu, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'rc-ks-tubun-menu-backup.json'; a.click(); URL.revokeObjectURL(a.href);
-    }
-    $('loginBtn').onclick = login; $('logoutBtn').onclick = logout;
-    $('refreshBtn').onclick = refresh; $('saveBtn').onclick = save; $('clearBtn').onclick = clearForm;
-    $('refreshOrdersBtn').onclick = refreshOrders;
-    $('filter').oninput = renderList; $('exportBtn').onclick = exportJson;
-    document.addEventListener('keydown', (event) => {
-        if ((event.ctrlKey || event.metaKey) && ['+', '=', '-', '_', '0'].includes(event.key)) {
+
+    $('saveBtn').addEventListener('click', saveItem);
+    $('clearBtn').addEventListener('click', clearForm);
+    $('saveOutletBtn').addEventListener('click', saveOutlet);
+    $('downloadBtn').addEventListener('click', downloadJson);
+    $('importFile').addEventListener('change', handleImport);
+    $('reloadLiveBtn').addEventListener('click', () => {
+        if (dirtyCount > 0 && !confirm('Buang semua perubahan draft yang belum diunduh dan muat ulang data dari situs?')) return;
+        loadFromSite(true);
+    });
+    $('filter').addEventListener('input', renderList);
+    $('categoryFilter').addEventListener('change', renderList);
+    $('statusFilter').addEventListener('change', renderList);
+    $('imageUrl').addEventListener('input', updateImagePreview);
+
+    window.addEventListener('beforeunload', event => {
+        if (dirtyCount > 0) {
             event.preventDefault();
+            event.returnValue = '';
         }
     });
-    initAuth();
+
+    loadFromSite(false);
 })();

@@ -1,147 +1,78 @@
-# Menu Rocket Chicken KS Tubun
+# Menu Rocket Chicken KS Tubun (Statis)
 
-Website katalog menu dan pemesanan Rocket Chicken outlet KS Tubun, Rejasari, Purwokerto. Pelanggan memilih menu, mengirim pesanan untuk mendapatkan nomor antrean, dan melihat status pesanan. Data menu, pesanan, dan autentikasi admin menggunakan Supabase.
+Website **daftar menu dan harga online** yang 100% statis untuk Rocket Chicken outlet KS Tubun, Rejasari, Purwokerto. Data menu, harga, dan link kontak (WhatsApp, Google Maps, dan media sosial) disimpan di satu file JSON ([`data/menus.json`](data/menus.json)), sehingga dapat di-hosting gratis tanpa backend dan tanpa risiko database auto-pause di **Cloudflare Pages** maupun **GitHub Pages**.
 
 ## Fitur
 
-### Katalog publik
+### Katalog Publik (`index.html`)
+- Memuat daftar menu aktif dan info outlet langsung dari `data/menus.json`.
+- Navigasi kategori dengan carousel responsif (Splide) dan urutan kategori yang diatur dari JSON.
+- **Pencarian lintas semua kategori** berdasarkan nama, deskripsi, kategori, dan kata pencarian tambahan.
+- Tombol cepat ke **WhatsApp**, **Google Maps**, serta **Instagram / TikTok / Facebook** (tombol medsos yang dikosongkan otomatis tersembunyi).
+- Seluruh foto produk, logo, dan gambar hero disimpan lokal dalam format **WebP** yang ringan (~1,5 MB untuk seluruh 35 gambar).
 
-- Memuat menu aktif dari tabel `menus` di Supabase.
-- Mengelompokkan menu berdasarkan kategori, dengan urutan kategori yang ditentukan di aplikasi.
-- Mendukung pencarian pada nama, deskripsi, kategori, dan kata pencarian tambahan.
-- Menampilkan harga rupiah, foto menu, jumlah item, dan subtotal keranjang.
-- Menyediakan tombol muat ulang untuk mengambil data terbaru.
-- Menyediakan tampilan responsif untuk ponsel dan desktop.
-- QR outlet dapat mengarah ke URL publik yang sama; pelanggan tidak perlu login.
+### Panel Editor Harga (`admin.html`)
+- Berjalan 100% di browser tanpa login server/database.
+- **Update harga cepat** langsung di kolom tabel tanpa harus membuka form satu per satu.
+- Tambah, edit, aktif/nonaktifkan, atau hapus menu lengkap dengan pratinjau gambar lokal/URL.
+- Edit **Info Outlet & Link Tombol Kontak** (WhatsApp, Google Maps, Instagram, TikTok, Facebook, alamat, jam buka).
+- Draft perubahan otomatis tersimpan di `localStorage` browser selama belum diunduh.
+- Mendukung **Unduh `menus.json`** dan **Impor JSON** (kompatibel juga dengan format backup JSON Supabase lama).
 
-### Keranjang dan pemesanan
-
-- Jumlah setiap menu dapat ditambah atau dikurangi.
-- Formulir checkout meminta nama, nomor HP opsional dengan keyboard angka di ponsel, catatan opsional, dan metode pembayaran tunai atau QRIS.
-- Database menghitung ulang harga berdasarkan menu aktif dan memberi nomor antrean harian dalam format `001-251026` (nomor urut-hari/bulan/tahun). Hitungan kembali ke `001` setiap hari pukul 00.00 WIB.
-- Pelanggan dapat melihat status pesanan menggunakan token pelacakan yang disimpan di browser.
-- QRIS versi MVP dibayar manual menggunakan QR outlet di kasir; admin mengonfirmasi pembayaran.
-
-### Admin (`admin.html`)
-
-- Login dan logout menggunakan Supabase Authentication.
-- Melihat hingga 100 pesanan terbaru, detail item, antrean, pembayaran, dan status.
-- Menerima/menolak pesanan, memperbarui proses hingga selesai, dan mengonfirmasi pembayaran.
-- Menambah dan mengubah nama, kategori, deskripsi, URL gambar, harga, serta kata pencarian menu.
-- Mencari data menu, memuat ulang daftar, mengaktifkan atau menonaktifkan menu, dan mengekspor daftar yang dimuat sebagai JSON.
-- Perubahan harga dan menu baru tampil pada katalog setelah berhasil disimpan ke Supabase.
-
-## Struktur proyek
+## Struktur Proyek
 
 ```text
 .
-|-- index.html       # Katalog dan checkout
-|-- admin.html       # Panel pengelolaan menu
-|-- css/
-|   |-- style.css    # Gaya katalog
-|   `-- admin.css    # Gaya panel admin
-|-- js/
-|   |-- app.js       # Katalog, keranjang, pemesanan, dan status antrean
-|   |-- admin.js     # Autentikasi, pengelolaan menu, dan pesanan
-|   `-- zoom-lock.js # Mencegah pinch zoom pada perangkat sentuh
-|-- supabase/
-|   `-- migrations/  # Skema dan fungsi pemesanan
-`-- img/             # Aset gambar lokal
+├── index.html          # Halaman daftar menu & harga publik
+├── admin.html          # Panel editor harga & info outlet (ekspor JSON)
+├── data/
+│   └── menus.json      # Database statis menu, harga, dan link outlet
+├── css/
+│   ├── style.css       # Gaya katalog publik
+│   └── admin.css       # Gaya panel editor admin
+├── js/
+│   ├── app.js          # Render katalog, pencarian, dan link outlet dari JSON
+│   └── admin.js        # Editor JSON lokal + impor/ekspor menus.json
+└── img/                # Aset gambar lokal teroptimasi (WebP, logo.png, og-image.jpg)
 ```
 
-## Prasyarat Supabase
+## Cara Update Harga / Menu
 
-Aplikasi menggunakan Supabase JavaScript v2 yang dimuat dari CDN. Siapkan proyek Supabase dengan tabel `public.menus` dan kolom yang digunakan oleh aplikasi:
+1. Buka halaman `admin.html` (bisa dari URL situs publik seperti `/admin.html`, atau secara lokal).
+2. Ubah harga langsung di kolom **Harga cepat (Rp)**, tambah/edit menu, atau perbarui link WhatsApp / Maps / medsos di bagian **Info Outlet**.
+3. Klik tombol **Unduh menus.json**.
+4. Buka repositori GitHub kamu → masuk ke folder `data/` → klik **Add file → Upload files** → unggah file `menus.json` yang baru diunduh → klik **Commit changes**.
+5. GitHub Pages atau Cloudflare Pages akan otomatis men-deploy perubahan dalam ±30 detik.
 
-| Kolom              | Kegunaan                                                       |
-| ------------------ | -------------------------------------------------------------- |
-| `id`               | ID unik menu; digunakan untuk mengurutkan dan memperbarui item |
-| `name`             | Nama menu                                                      |
-| `price`            | Harga dalam rupiah, berupa angka bulat                         |
-| `category`         | Kategori sumber                                                |
-| `display_category` | Kategori yang ditampilkan pada katalog dan admin               |
-| `description`      | Deskripsi menu                                                 |
-| `image_url`        | URL publik gambar menu, opsional                               |
-| `search_terms`     | Kata tambahan untuk pencarian                                  |
-| `active`           | Status menu; hanya baris aktif ditampilkan pada katalog        |
-| `sort_order`       | Urutan menu dalam kategori                                     |
-| `updated_at`       | Waktu perubahan terakhir                                       |
+## Cara Deploy Gratis
 
-Pastikan tabel dan tipe kolom sesuai data yang disimpan: `id` harus unik, `price` numerik, `active` boolean, `sort_order` numerik, dan kolom teks menyimpan nilai teks atau `NULL` bila sesuai. Admin menulis `name`, `price`, `category`, `display_category`, `description`, `image_url`, `search_terms`, `active`, dan `updated_at`.
+### Cloudflare Pages (Disarankan)
+1. Masuk ke dashboard Cloudflare → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
+2. Pilih repositori GitHub ini.
+3. Pengaturan build:
+   - **Framework preset**: `None`
+   - **Build command**: *(kosongkan)*
+   - **Build output directory**: `/` *(atau `.`)*
+4. Klik **Save and Deploy**.
 
-### Autentikasi dan kebijakan akses
+### GitHub Pages
+1. Buka **Settings → Pages** di repositori GitHub ini.
+2. Pada **Source**, pilih **Deploy from a branch** → branch `gh-pages`, folder `/ (root)`.
+3. Simpan; situs aktif di `https://<username>.github.io/menu/`.
 
-1. Buat pengguna admin di Supabase Authentication.
-2. Aktifkan Row Level Security (RLS) pada `public.menus`.
-3. Buat kebijakan `SELECT` untuk katalog publik yang hanya mengizinkan baris `active = true`.
-4. Berikan `SELECT` semua baris serta `INSERT` dan `UPDATE` hanya kepada akun admin yang diizinkan. Batasi kebijakan berdasarkan `auth.uid()`/UID admin, bukan hanya karena pengguna berhasil login.
-5. Uji akses menggunakan sesi anonim dan akun non-admin. Pastikan keduanya tidak dapat mengubah data atau membaca menu nonaktif.
+> Jika memakai domain khusus atau URL Cloudflare Pages, perbarui tag `og:image` dan `og:url` di `index.html` agar pratinjau link WhatsApp sesuai domain kamu.
 
-Frontend memakai Supabase publishable key; key tersebut memang terlihat oleh browser dan bukan pengganti RLS. Jangan pernah menaruh `service_role` key atau kredensial rahasia di file frontend. Panel admin hanyalah antarmuka, sedangkan kebijakan RLS di database adalah batas keamanan yang sebenarnya.
+## Uji Coba Lokal
 
-### Menyiapkan pemesanan dan admin
+Tidak butuh build tools atau instalasi paket. Jalankan server statis dari folder proyek:
 
-1. Di Supabase SQL Editor, jalankan [migrasi pemesanan](supabase/migrations/20261025000000_orders.sql). Migrasi menambah tabel pesanan dan fungsi database untuk memeriksa menu aktif, menghitung total, membuat nomor antrean, melihat status dengan token, dan membatasi operasi admin. Jika migrasi pemesanan versi sebelumnya sudah pernah dijalankan, jalankan kembali skrip SQL yang sudah diperbarui ini agar format nomor antrean baru berlaku; skrip menggunakan `create or replace` dan tidak menghapus data pesanan.
-2. Buat atau gunakan akun admin di Supabase Authentication, lalu salin UID akun tersebut.
-3. Daftarkan UID sebagai admin pesanan di SQL Editor:
-
-   ```sql
-   insert into public.order_admins (user_id)
-   values ('GANTI_DENGAN_UID_ADMIN');
-   ```
-
-4. Pastikan URL dan publishable key di `js/app.js` dan `js/admin.js` cocok dengan proyek Supabase. Jangan gunakan `service_role` key pada website.
-5. Uji satu pesanan pelanggan beserta perubahan status di `/admin.html`. QRIS versi awal memakai QR statis di kasir; admin harus memastikan pembayaran sebelum menandainya lunas.
-6. Buat QR outlet permanen dari URL GitHub Pages `https://mfxnan.github.io/menu/`. Uji URL tersebut dari ponsel sebelum mencetak QR; QR tetap sama selama URL situs tidak berubah.
-
-Fungsi database dapat dipanggil dari browser, tetapi akses langsung ke tabel pesanan ditutup. Akun harus terdaftar pada `order_admins`. Tabel `menus` tetap memerlukan kebijakan RLS publik/admin tersendiri.
-
-## Konfigurasi
-
-Pengaturan koneksi dan nomor WhatsApp outlet berada di kode frontend:
-
-- URL Supabase, publishable key katalog, dan nomor WhatsApp untuk pertanyaan outlet: `js/app.js`, pada objek `CONFIG`.
-- URL Supabase dan publishable key panel admin: `js/admin.js`, pada konstanta di awal file.
-
-Gunakan URL dan publishable key dari proyek Supabase yang sama pada kedua file. Nomor WhatsApp harus berupa nomor internasional tanpa tanda `+` atau pemisah, misalnya `62...`. Nomor yang saat ini tertanam adalah nomor outlet yang sudah dikonfigurasi di `app.js`.
-
-Kategori tampilan di panel admin merupakan daftar opsi tetap yang didefinisikan pada `admin.html`. Kategori lain yang dimasukkan langsung ke database masih dapat muncul di katalog, tetapi tidak tersedia sebagai pilihan admin sampai opsi ditambahkan ke HTML.
-
-## Menjalankan dan menerbitkan
-
-Tidak ada langkah build atau instalasi paket: ini adalah aplikasi HTML, CSS, dan JavaScript statis.
-
-Untuk uji lokal, jalankan server statis dari folder proyek, misalnya:
-
-```powershell
-py -m http.server 8000
+```bash
+python3 -m http.server 8000
 ```
 
-Buka `http://localhost:8000/` untuk katalog dan `http://localhost:8000/admin.html` untuk panel admin. Koneksi internet dibutuhkan untuk Supabase, Google Fonts, Splide, serta gambar yang di-host secara eksternal.
-
-Proyek dapat diterbitkan pada hosting statis seperti GitHub Pages. Atur URL Supabase dan kebijakan RLS sebelum digunakan. Setelah perubahan data menu, muat ulang katalog untuk memastikan harga yang tampil sesuai dengan database.
-
-Untuk panduan menjalankan **website, backend, Auth, dan database Supabase sepenuhnya di VPS sendiri**, lihat [Panduan Self-Hosting Penuh di Server Sendiri](docs/panduan-server-sendiri.md).
-
-## Batasan MVP
-
-- Pesanan berstatus menunggu konfirmasi sebelum diproses. Nomor antrean diberikan saat pesanan dikirim, dimulai kembali setiap hari pukul 00.00 WIB, dan ditampilkan dengan format `001-251026`.
-- Pesanan tersimpan di database dan tidak hilang ketika pelanggan me-refresh halaman. Token untuk membuka status pesanan terakhir disimpan di browser; status dapat dipulihkan selama penyimpanan lokal tidak dihapus.
-- QRIS belum terhubung ke payment gateway. Pembayaran tidak diverifikasi otomatis; admin harus memastikan pembayaran sebelum menandainya lunas.
-- Nomor telepon opsional; nomor antrean yang muncul setelah pemesanan perlu dicatat pelanggan.
-- Keranjang berada di memori halaman. Isinya hilang ketika halaman dimuat ulang atau ditutup.
-- Tidak ada ketersediaan stok per item. Katalog hanya menampilkan baris aktif dan memberi label “Tersedia”.
-- Menyimpan perubahan pada item yang sebelumnya nonaktif akan mengirim `active: true`, sehingga item tersebut aktif kembali.
-- Ekspor JSON mengunduh data menu yang sedang dimuat di panel admin, termasuk baris nonaktif bila RLS mengizinkannya. Simpan file ekspor dengan akses yang sesuai.
-- Halaman admin dan katalog memuat library dari CDN, sehingga fitur terkait memerlukan jaringan. Bila Supabase gagal diakses, katalog tidak dapat menampilkan data lokal sebagai fallback.
-- Supabase Free memiliki kuota dan proyek dapat dijeda setelah tidak aktif. Periksa [harga dan batas Supabase](https://supabase.com/pricing) sebelum dipakai untuk operasional rutin.
-
-## Dependensi eksternal
-
-- Supabase JavaScript v2 untuk database dan autentikasi.
-- Splide 4.1.4 untuk carousel kategori.
-- Google Fonts (DM Sans dan Oswald).
-- Gambar menu dan gambar hero dari URL yang disimpan/didefinisikan di aplikasi.
+Lalu buka:
+- Katalog publik: `http://localhost:8000/`
+- Panel editor harga: `http://localhost:8000/admin.html`
 
 ## Lisensi
 

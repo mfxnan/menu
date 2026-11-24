@@ -3,129 +3,200 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#c8102e">
-    <title>Admin Rocket Chicken KS Tubun</title>
+    <meta name="robots" content="noindex, nofollow">
+    <title>Admin Daftar Harga · Rocket Chicken KS Tubun</title>
+    <link rel="icon" href="img/logo.png" type="image/png">
     <link rel="stylesheet" href="css/admin.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-    <script src="js/zoom-lock.js" defer></script>
     <script src="js/admin.js" defer></script>
 </head>
 
 <body>
     <header>
-        <div class="wrap">
-            <h1>Admin Rocket Chicken KS Tubun</h1>
-            <div>Panel khusus admin utama • Perubahan tersimpan di Supabase</div>
+        <div class="wrap header-bar">
+            <div>
+                <h1>Editor Menu &amp; Harga</h1>
+                <div class="header-sub">Mode statis JSON · Edit di sini lalu unduh <code>menus.json</code> untuk diunggah ke GitHub</div>
+            </div>
+            <div class="header-links">
+                <a class="btn-link" href="index.html" target="_blank" rel="noopener noreferrer">Lihat Katalog ↗</a>
+            </div>
         </div>
     </header>
+
     <main class="wrap">
-        <div id="authPanel" class="panel">
-            <strong>Login admin</strong>
-            <div class="row">
-                <div><label for="email">Email admin</label><input id="email" type="email" autocomplete="username"></div>
-                <div><label for="password">Password</label><input id="password" type="password"
-                        autocomplete="current-password"></div>
-            </div>
-            <div class="actions"><button id="loginBtn">Login</button><button id="logoutBtn"
-                    class="secondary hidden">Logout</button></div>
-            <div id="authStatus" class="status">Login menggunakan akun yang dibuat di Supabase Authentication.</div>
-        </div>
-        <div id="orderPanel" class="panel hidden">
-            <div class="row">
-                <div><strong>Pesanan dan antrean</strong>
-                    <p class="muted">Pesanan baru diperbarui otomatis setiap 10 detik.</p>
+        <section class="panel publish-panel" aria-label="Sinkronisasi dan ekspor JSON">
+            <div class="publish-head">
+                <div>
+                    <strong>Simpan &amp; Terbitkan Perubahan</strong>
+                    <div id="draftBadge" class="badge">Data sesuai situs</div>
                 </div>
-                <div class="actions"><button id="refreshOrdersBtn" class="secondary">Muat ulang pesanan</button></div>
+                <div class="actions">
+                    <button id="downloadBtn" type="button">Unduh menus.json</button>
+                    <label class="file-btn secondary" for="importFile">Impor JSON</label>
+                    <input id="importFile" type="file" accept="application/json,.json" class="sr-only">
+                    <button id="reloadLiveBtn" type="button" class="secondary">Reset ke data situs</button>
+                </div>
             </div>
-            <div id="ordersStatus" class="status">Memeriksa akses admin pesanan...</div>
-            <div class="tablewrap">
-                <table class="orders-table">
-                    <thead>
-                        <tr>
-                            <th>Antrean / waktu</th>
-                            <th>Pemesan / menu</th>
-                            <th>Total</th>
-                            <th>Pembayaran</th>
-                            <th>Status</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="orderRows"></tbody>
-                </table>
+            <div id="syncStatus" class="status">Memuat data dari data/menus.json...</div>
+            <details class="guide-box">
+                <summary>Cara menerbitkan harga baru ke GitHub Pages / Cloudflare Pages</summary>
+                <ol>
+                    <li>Ubah harga langsung di tabel daftar menu atau tambah/edit menu lewat form di bawah (draft otomatis tersimpan di browser ini).</li>
+                    <li>Klik tombol <strong>Unduh menus.json</strong> di atas.</li>
+                    <li>Buka repositori GitHub kamu → masuk folder <code>data/</code> → klik <strong>Add file → Upload files</strong> → unggah file <code>menus.json</code> lalu <strong>Commit changes</strong>.</li>
+                    <li>GitHub Pages / Cloudflare Pages akan otomatis memperbarui situs dalam ±30 detik.</li>
+                </ol>
+            </details>
+        </section>
+
+        <details class="panel collapsible-panel" id="outletPanel">
+            <summary class="panel-summary">
+                <span><strong>Info Outlet, WhatsApp, Medsos &amp; Maps</strong></span>
+                <span class="muted">Klik untuk mengubah link tombol kontak</span>
+            </summary>
+            <div class="panel-body">
+                <div class="row">
+                    <div><label for="outletName">Nama outlet</label><input id="outletName" maxlength="80"></div>
+                    <div><label for="outletBranch">Nama cabang</label><input id="outletBranch" maxlength="120"></div>
+                </div>
+                <div class="row">
+                    <div><label for="outletAddress">Alamat singkat</label><input id="outletAddress" maxlength="200"></div>
+                    <div><label for="outletHours">Jam buka</label><input id="outletHours" maxlength="100" placeholder="Contoh: Buka setiap hari 09.00 - 21.00"></div>
+                </div>
+                <div class="row">
+                    <div>
+                        <label for="outletWhatsapp">Nomor WhatsApp (format 62...)</label>
+                        <input id="outletWhatsapp" inputmode="numeric" maxlength="20" placeholder="6285725489277">
+                    </div>
+                    <div>
+                        <label for="outletWaMessage">Pesan default WhatsApp</label>
+                        <input id="outletWaMessage" maxlength="250" placeholder="Halo Rocket Chicken KS Tubun...">
+                    </div>
+                </div>
+                <div class="row">
+                    <div>
+                        <label for="outletMaps">Link Google Maps</label>
+                        <input id="outletMaps" type="url" maxlength="500" placeholder="https://maps.app.goo.gl/...">
+                    </div>
+                    <div>
+                        <label for="outletInstagram">Link Instagram (opsional)</label>
+                        <input id="outletInstagram" type="url" maxlength="300" placeholder="https://instagram.com/...">
+                    </div>
+                </div>
+                <div class="row">
+                    <div>
+                        <label for="outletTiktok">Link TikTok (opsional)</label>
+                        <input id="outletTiktok" type="url" maxlength="300" placeholder="https://tiktok.com/@...">
+                    </div>
+                    <div>
+                        <label for="outletFacebook">Link Facebook (opsional)</label>
+                        <input id="outletFacebook" type="url" maxlength="300" placeholder="https://facebook.com/...">
+                    </div>
+                </div>
+                <p class="muted">Tombol medsos yang dikosongkan akan otomatis disembunyikan di halaman utama.</p>
+                <div class="actions">
+                    <button id="saveOutletBtn" type="button">Terapkan Info Outlet</button>
+                </div>
+                <div id="outletStatus" class="status hidden"></div>
             </div>
-        </div>
-        <div id="editorPanel" class="panel hidden">
-            <strong>Tambah / ubah menu</strong>
-            <p class="muted">Harga diisi angka saja, misalnya 13000. Perubahan tidak langsung tayang sebelum tombol
-                Simpan ditekan.</p>
+        </details>
+
+        <section id="editorPanel" class="panel" aria-labelledby="editorTitle">
+            <strong id="editorTitle">Tambah / Ubah Menu</strong>
+            <p class="muted">Isi harga dengan angka bulat (contoh: <code>15000</code>). Untuk gambar lokal, gunakan path relatif seperti <code>img/bucket1.webp</code>.</p>
             <input id="itemId" type="hidden">
             <div class="row">
-                <div><label for="name">Nama menu</label><input id="name" maxlength="120" required></div>
-                <div><label for="category">Kategori tampilan</label><select id="category">
-                        <option>Paket Promo</option>
-                        <option>Paket Catering</option>
-                        <option>Paket Segar</option>
-                        <option>Lainnya</option>
-                        <option>Chicken Produk</option>
-                        <option>Paket Bucket</option>
-                        <option>Ayam Utuh</option>
-                        <option>Paket Rocket</option>
-                        <option>Paket Sehat</option>
-                        <option>Paket Roma</option>
-                        <option>Paket Geprek</option>
-                        <option>Paket Geprek Kosek</option>
-                        <option>Paket Geprek Matah</option>
-                        <option>Paket Geprek Terasi</option>
-                        <option>Paket Hot Cheesy</option>
-                        <option>Minuman</option>
-                    </select></div>
-                <div><label for="sourceCategory">Kategori sumber (opsional)</label><input id="sourceCategory"
-                        maxlength="120"></div>
-            </div>
-            <label for="description">Deskripsi</label><input id="description" maxlength="300">
-            <label for="imageUrl">URL gambar (opsional)</label><input id="imageUrl" type="url" maxlength="2048"
-                placeholder="https://...">
-            <p class="muted">Gunakan URL gambar publik. Rasio yang disarankan 1,35:1, misalnya 1350 × 1000 piksel.
-                Gambar akan dipotong otomatis agar sesuai kartu menu.</p>
-            <div class="row">
-                <div><label for="price">Harga (Rp)</label><input id="price" type="number" min="0" step="500" required>
+                <div>
+                    <label for="name">Nama menu</label>
+                    <input id="name" maxlength="120" placeholder="Contoh: Paket Rocket 1" required>
                 </div>
-                <div><label for="searchTerms">Kata pencarian tambahan</label><input id="searchTerms" maxlength="300">
+                <div>
+                    <label for="category">Kategori</label>
+                    <input id="category" list="categorySuggestions" maxlength="80" placeholder="Pilih atau ketik kategori baru">
+                    <datalist id="categorySuggestions"></datalist>
                 </div>
             </div>
-            <div class="actions"><button id="saveBtn">Simpan menu</button><button id="clearBtn"
-                    class="secondary">Kosongkan form</button></div>
-            <div id="saveStatus" class="status">Belum ada perubahan.</div>
-        </div>
-        <div id="listPanel" class="panel hidden">
-            <div class="row">
-                <div><strong>Daftar menu</strong>
-                    <p class="muted">Klik Edit untuk memuat data ke form.</p>
+            <div class="row three-col">
+                <div>
+                    <label for="price">Harga (Rp)</label>
+                    <input id="price" type="number" min="0" step="500" placeholder="15000" required>
                 </div>
-                <div><label for="filter">Cari menu</label><input id="filter" placeholder="Ketik nama/kategori..."></div>
+                <div>
+                    <label for="sortOrder">Urutan tampil</label>
+                    <input id="sortOrder" type="number" min="0" step="1" value="100">
+                </div>
+                <div class="checkbox-field">
+                    <label class="checkbox-label" for="itemActive">
+                        <input id="itemActive" type="checkbox" checked>
+                        <span>Tampilkan di katalog publik</span>
+                    </label>
+                </div>
             </div>
-            <div class="actions"><button id="refreshBtn" class="secondary">Muat ulang data</button><button
-                    id="exportBtn" class="secondary">Ekspor JSON cadangan</button></div>
-            <div id="listStatus" class="status">Belum dimuat.</div>
+            <label for="description">Deskripsi</label>
+            <input id="description" maxlength="300" placeholder="Contoh: Nasi + Ayam Sayap + Es Teh">
+            <div class="row image-row">
+                <div>
+                    <label for="imageUrl">Path / URL gambar (opsional)</label>
+                    <input id="imageUrl" maxlength="500" placeholder="img/nama-file.webp atau https://...">
+                    <label for="searchTerms">Kata pencarian tambahan (opsional)</label>
+                    <input id="searchTerms" maxlength="300" placeholder="Contoh: ayam geprek pedas nasi">
+                </div>
+                <div class="preview-box" id="imagePreviewBox">
+                    <span class="muted">Pratinjau gambar</span>
+                </div>
+            </div>
+            <div class="actions">
+                <button id="saveBtn" type="button">Tambah menu ke draft</button>
+                <button id="clearBtn" type="button" class="secondary">Kosongkan form</button>
+            </div>
+            <div id="saveStatus" class="status">Siap menambah atau mengubah menu.</div>
+        </section>
+
+        <section id="listPanel" class="panel" aria-labelledby="listTitle">
+            <div class="list-head">
+                <div>
+                    <strong id="listTitle">Daftar Menu &amp; Update Harga Cepat</strong>
+                    <p class="muted">Kamu bisa langsung mengubah angka harga di kolom Harga tanpa membuka form Edit.</p>
+                </div>
+            </div>
+            <div class="row three-col filter-bar">
+                <div>
+                    <label for="filter">Cari menu</label>
+                    <input id="filter" type="search" placeholder="Ketik nama, kategori, atau deskripsi...">
+                </div>
+                <div>
+                    <label for="categoryFilter">Filter kategori</label>
+                    <select id="categoryFilter">
+                        <option value="">Semua kategori</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="statusFilter">Filter status</label>
+                    <select id="statusFilter">
+                        <option value="all">Semua status</option>
+                        <option value="active">Aktif saja</option>
+                        <option value="inactive">Nonaktif saja</option>
+                    </select>
+                </div>
+            </div>
+            <div id="listStatus" class="status">Memuat daftar menu...</div>
             <div class="tablewrap">
                 <table>
                     <thead>
                         <tr>
                             <th>Menu</th>
                             <th>Kategori</th>
-                            <th>Harga</th>
-                            <th>Terakhir diubah</th>
+                            <th>Harga cepat (Rp)</th>
+                            <th>Status</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="rows"></tbody>
                 </table>
             </div>
-        </div>
-        <p class="muted">Keamanan: database RLS adalah penjaga utama. Menyembunyikan tombol saja bukan keamanan.
-            Pastikan UUID admin pada SQL cocok dengan UID akun admin kamu.</p>
+        </section>
     </main>
 </body>
 

@@ -1,37 +1,36 @@
-const CONFIG = {
-    supabaseUrl: 'https://ulpckwlazrnhxvjthlgh.supabase.co',
-    supabasePublishableKey: 'sb_publishable_sxy7RSWC7Lo5ggQyPTvjRA_fH_xdsLJ',
-    outletWhatsApp: '6285725489277'
-};
+const DATA_URL = 'data/menus.json';
 
-const MENU_TABLE = 'menus';
-const LAST_ORDER_TOKEN_KEY = 'rc-ks-tubun-order-token';
-const supabaseClient = window.supabase?.createClient(CONFIG.supabaseUrl, CONFIG.supabasePublishableKey);
+const DEFAULT_CATEGORY_ORDER = [
+    'Paket Promo',
+    'Paket Catering',
+    'Paket Segar',
+    'Lainnya',
+    'Chicken Produk',
+    'Paket Bucket',
+    'Ayam Utuh',
+    'Paket Rocket',
+    'Paket Sehat',
+    'Paket Roma',
+    'Paket Geprek',
+    'Paket Geprek Kosek',
+    'Paket Geprek Matah',
+    'Paket Geprek Terasi',
+    'Paket Hot Cheesy',
+    'Minuman'
+];
+
 const menuGrid = document.getElementById('menuGrid');
 const categoryList = document.getElementById('categoryList');
 const statusLabel = document.getElementById('connectionStatus');
+const searchInput = document.getElementById('searchInput');
+const clearSearchBtn = document.getElementById('clearSearch');
 const rupiah = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+
 let menuItems = [];
+let categoryOrder = [...DEFAULT_CATEGORY_ORDER];
 let activeCategory = '';
 let categoryCarousel = null;
 let toastTimeout;
-const cart = new Map();
-let orderStatusInterval;
-let lastOrderToken = null;
-try {
-    lastOrderToken = localStorage.getItem(LAST_ORDER_TOKEN_KEY);
-} catch {
-    showToast('Penyimpanan lokal browser tidak tersedia; status pesanan tidak tersimpan setelah halaman ditutup.');
-}
-
-const orderStatusLabels = {
-    pending: 'Menunggu konfirmasi admin',
-    accepted: 'Pesanan diterima',
-    rejected: 'Pesanan ditolak. Silakan hubungi staf outlet.',
-    preparing: 'Pesanan sedang disiapkan',
-    ready: 'Pesanan siap diambil',
-    completed: 'Pesanan selesai'
-};
 
 function showToast(message) {
     const toast = document.getElementById('toast');
@@ -43,7 +42,7 @@ function showToast(message) {
 
 function setConnection(message, state = '') {
     statusLabel.textContent = message;
-    statusLabel.className = `connection ${state}`;
+    statusLabel.className = `connection ${state}`.trim();
 }
 
 function makeElement(tag, className, text) {
@@ -53,26 +52,103 @@ function makeElement(tag, className, text) {
     return element;
 }
 
+function safeImageUrl(url) {
+    if (!url) return '';
+    try {
+        const parsed = new URL(url, window.location.href);
+        return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+    } catch {
+        return '';
+    }
+}
+
+function safeExternalUrl(url) {
+    if (!url) return '';
+    try {
+        const parsed = new URL(String(url).trim());
+        return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
+    } catch {
+        return '';
+    }
+}
+
+function setLinkButton(id, href) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (href) {
+        el.href = href;
+        el.classList.remove('hidden');
+    } else {
+        el.removeAttribute('href');
+        el.classList.add('hidden');
+    }
+}
+
+function applyOutletInfo(outlet) {
+    if (!outlet || typeof outlet !== 'object') return;
+
+    const name = String(outlet.name || 'ROCKET CHICKEN').trim();
+    const branch = String(outlet.branch || 'Outlet KS Tubun - Rejasari - Purwokerto').trim();
+    document.getElementById('outletName').textContent = name;
+    document.getElementById('outletBranch').textContent = branch;
+    document.getElementById('footerOutlet').textContent = `${name} · ${branch}`;
+
+    const phone = String(outlet.whatsapp || '').replace(/\D/g, '');
+    const waText = String(outlet.whatsapp_message || 'Halo Rocket Chicken KS Tubun, saya ingin bertanya tentang menu dan harga.').trim();
+    const waHref = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(waText)}` : '';
+
+    const mapsHref = safeExternalUrl(outlet.maps_url);
+    const igHref = safeExternalUrl(outlet.instagram_url);
+    const tiktokHref = safeExternalUrl(outlet.tiktok_url);
+    const fbHref = safeExternalUrl(outlet.facebook_url);
+
+    setLinkButton('contactWaBtn', waHref);
+    setLinkButton('contactMapsBtn', mapsHref);
+    setLinkButton('contactIgBtn', igHref);
+    setLinkButton('contactTiktokBtn', tiktokHref);
+    setLinkButton('contactFbBtn', fbHref);
+
+    setLinkButton('headerMapsBtn', mapsHref);
+    setLinkButton('heroMapsBtn', mapsHref);
+
+    const headerWa = document.getElementById('headerWaBtn');
+    if (waHref) {
+        headerWa.href = waHref;
+        headerWa.target = '_blank';
+        headerWa.rel = 'noopener noreferrer';
+        headerWa.textContent = 'WhatsApp';
+    } else {
+        headerWa.href = '#kontak';
+        headerWa.removeAttribute('target');
+        headerWa.removeAttribute('rel');
+        headerWa.textContent = 'Hubungi outlet';
+    }
+
+    const meta = document.getElementById('outletMeta');
+    meta.replaceChildren();
+    if (outlet.address) meta.append(makeElement('span', '', `📍 ${String(outlet.address).trim()}`));
+    if (outlet.hours) meta.append(makeElement('span', '', `🕒 ${String(outlet.hours).trim()}`));
+}
+
+function normalizeMenuItem(item) {
+    if (!item) return null;
+    const active = item.active !== undefined ? Boolean(item.active) : Boolean(item.is_available !== false);
+    if (!active) return null;
+    const category = String(item.display_category || item.category || 'Lainnya').trim() || 'Lainnya';
+    return {
+        id: String(item.id || ''),
+        name: String(item.name || '').trim(),
+        description: String(item.description || '').trim(),
+        category,
+        price: Number(item.price) || 0,
+        image_url: safeImageUrl(item.image_url || ''),
+        search_terms: String(item.search_terms || '').trim(),
+        sort_order: Number(item.sort_order) || 100
+    };
+}
+
 function renderCategories() {
     const categories = [...new Set(menuItems.map(item => item.category).filter(Boolean))];
-    const categoryOrder = [
-        'Paket Promo',
-        'Paket Catering',
-        'Paket Segar',
-        'Lainnya',
-        'Chicken Produk',
-        'Paket Bucket',
-        'Ayam Utuh',
-        'Paket Rocket',
-        'Paket Sehat',
-        'Paket Roma',
-        'Paket Geprek',
-        'Paket Geprek Kosek',
-        'Paket Geprek Matah',
-        'Paket Geprek Terasi',
-        'Paket Hot Cheesy',
-        'Minuman'
-    ];
     const categoryRanks = new Map(categoryOrder.map((category, index) => [category, index]));
     categories.sort((first, second) => {
         const firstRank = categoryRanks.get(first);
@@ -82,21 +158,27 @@ function renderCategories() {
         if (secondRank !== undefined) return 1;
         return first.localeCompare(second, 'id', { sensitivity: 'base' });
     });
+
     if (!categories.includes(activeCategory)) activeCategory = categories[0] || '';
     categoryCarousel?.destroy();
     categoryCarousel = null;
     categoryList.replaceChildren();
+
     const selectCategory = category => {
         if (!categories.includes(category)) return;
         const changed = activeCategory !== category;
         activeCategory = category;
+        if (searchInput.value.trim()) {
+            searchInput.value = '';
+        }
         categoryList.querySelectorAll('.category-button').forEach(categoryButton => {
             const isActive = categoryButton.dataset.category === activeCategory;
             categoryButton.classList.toggle('active', isActive);
             categoryButton.setAttribute('aria-pressed', String(isActive));
         });
-        if (changed) renderMenu();
+        if (changed || !searchInput.value.trim()) renderMenu();
     };
+
     categories.forEach((category, index) => {
         const slide = makeElement('li', 'splide__slide');
         const button = makeElement('button', `category-button${activeCategory === category ? ' active' : ''}`, category);
@@ -110,11 +192,12 @@ function renderCategories() {
         slide.append(button);
         categoryList.append(slide);
     });
+
     if (categories.length && window.Splide) {
         categoryCarousel = new window.Splide('#categoryCarousel', {
             type: 'loop',
             autoWidth: true,
-            start: categories.indexOf(activeCategory),
+            start: Math.max(0, categories.indexOf(activeCategory)),
             focus: 0,
             trimSpace: false,
             drag: true,
@@ -127,20 +210,21 @@ function renderCategories() {
                 620: { gap: '6px', padding: '16px' }
             }
         });
-        categoryCarousel.on('moved', index => selectCategory(categories[index]));
+        categoryCarousel.on('moved', index => {
+            if (!searchInput.value.trim()) selectCategory(categories[index]);
+        });
         categoryCarousel.mount();
         requestAnimationFrame(() => categoryCarousel?.refresh());
     }
 }
 
-function renderMenu() {
-    const query = document.getElementById('searchInput').value.trim().toLocaleLowerCase('id-ID');
-    const filtered = menuItems.filter(item => {
-        const matchesCategory = item.category === activeCategory;
-        const searchText = `${item.name || ''} ${item.description || ''} ${item.category || ''} ${item.search_terms || ''}`.toLocaleLowerCase('id-ID');
-        return matchesCategory && searchText.includes(query);
+function sortItemsForDisplay(items, category) {
+    const sorted = [...items].sort((a, b) => {
+        if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+        return a.name.localeCompare(b.name, 'id', { sensitivity: 'base' });
     });
-    if (['Paket Geprek', 'Chicken Produk'].includes(activeCategory)) {
+
+    if (['Paket Geprek', 'Chicken Produk'].includes(category)) {
         const itemRank = item => {
             const name = (item.name || '').toLocaleLowerCase('id-ID');
             const packageNumber = name.match(/\b(?:paket|geprek)\s*(?:no\.?\s*)?([1-3])\b/);
@@ -150,9 +234,28 @@ function renderMenu() {
             if (/\bdada\b|\bpaha\s*atas\b/.test(name)) return 5;
             return 6;
         };
-        filtered.sort((first, second) => itemRank(first) - itemRank(second));
+        sorted.sort((first, second) => itemRank(first) - itemRank(second));
     }
-    document.getElementById('resultCount').textContent = `${filtered.length} menu`;
+    return sorted;
+}
+
+function renderMenu() {
+    const query = searchInput.value.trim().toLocaleLowerCase('id-ID');
+    const isSearching = query.length > 0;
+    clearSearchBtn.classList.toggle('hidden', !isSearching);
+
+    let filtered = menuItems.filter(item => {
+        if (!isSearching) return item.category === activeCategory;
+        const searchText = `${item.name} ${item.description} ${item.category} ${item.search_terms}`.toLocaleLowerCase('id-ID');
+        return searchText.includes(query);
+    });
+
+    filtered = sortItemsForDisplay(filtered, isSearching ? '' : activeCategory);
+
+    document.getElementById('resultCount').textContent = isSearching
+        ? `${filtered.length} menu ditemukan di semua kategori`
+        : `${filtered.length} menu · ${activeCategory || 'Semua'}`;
+
     menuGrid.replaceChildren();
 
     if (!menuItems.length) {
@@ -162,23 +265,26 @@ function renderMenu() {
         menuGrid.append(empty);
         return;
     }
+
     if (!filtered.length) {
         const empty = makeElement('div', 'empty-state');
         empty.append(makeElement('h3', '', 'Menu tidak ditemukan'));
-        empty.append(makeElement('p', '', 'Coba kata pencarian atau kategori yang berbeda.'));
+        empty.append(makeElement('p', '', 'Coba kata pencarian lain atau hapus filter pencarian untuk melihat semua kategori.'));
         menuGrid.append(empty);
         return;
     }
 
     filtered.forEach((item, index) => {
         const card = makeElement('article', 'menu-card');
-        card.style.animationDelay = `${Math.min(index * 35, 210)}ms`;
+        card.style.animationDelay = `${Math.min(index * 30, 180)}ms`;
+
         const photo = makeElement('div', 'menu-photo');
         if (item.image_url) {
             const image = document.createElement('img');
             image.src = item.image_url;
             image.alt = item.name;
             image.loading = 'lazy';
+            image.decoding = 'async';
             image.onerror = () => {
                 image.remove();
                 photo.prepend(makeElement('div', 'photo-fallback', 'Foto menu'));
@@ -187,322 +293,68 @@ function renderMenu() {
         } else {
             photo.append(makeElement('div', 'photo-fallback', 'Rocket Chicken'));
         }
-        photo.append(makeElement('span', 'availability', 'Tersedia'));
+
         const content = makeElement('div', 'menu-content');
         content.append(makeElement('div', 'menu-category', item.category || 'Menu'));
         content.append(makeElement('h3', '', item.name));
         content.append(makeElement('p', 'menu-description', item.description || 'Menu Rocket Chicken favoritmu.'));
-        const orderRow = makeElement('div', 'menu-order-row');
-        orderRow.append(makeElement('div', 'menu-price', rupiah.format(item.price)));
-        orderRow.append(createQuantityControl(item));
-        content.append(orderRow);
+
+        const priceRow = makeElement('div', 'menu-price-row');
+        priceRow.append(makeElement('div', 'menu-price', rupiah.format(item.price)));
+        content.append(priceRow);
+
         card.append(photo, content);
         menuGrid.append(card);
     });
 }
 
-function createQuantityControl(item) {
-    const quantity = cart.get(String(item.id))?.quantity || 0;
-    const control = makeElement('div', 'quantity-control');
-    control.dataset.itemId = String(item.id);
-    const decrease = makeElement('button', '', '−');
-    decrease.type = 'button';
-    decrease.disabled = quantity === 0;
-    decrease.setAttribute('aria-label', `Kurangi ${item.name}`);
-    decrease.addEventListener('click', () => changeQuantity(item, -1));
-    const value = makeElement('input', 'quantity-value');
-    value.type = 'number';
-    value.inputMode = 'numeric';
-    value.min = '0';
-    value.max = '99';
-    value.step = '1';
-    value.value = String(quantity);
-    value.setAttribute('aria-label', `Jumlah ${item.name}`);
-    value.addEventListener('change', () => setQuantity(item, Number.parseInt(value.value, 10) || 0));
-    const increase = makeElement('button', '', '+');
-    increase.type = 'button';
-    increase.disabled = quantity >= 99;
-    increase.setAttribute('aria-label', `Tambah ${item.name}`);
-    increase.addEventListener('click', () => changeQuantity(item, 1));
-    control.append(decrease, value, increase);
-    return control;
-}
-
-function changeQuantity(item, delta) {
-    const key = String(item.id);
-    const quantity = Math.max(0, (cart.get(key)?.quantity || 0) + delta);
-    setQuantity(item, quantity);
-}
-
-function setQuantity(item, quantity) {
-    const key = String(item.id);
-    quantity = Math.min(99, Math.max(0, Math.floor(quantity)));
-    if (quantity === 0) cart.delete(key);
-    else cart.set(key, { item, quantity });
-    document.querySelectorAll('.quantity-control').forEach(control => {
-        if (control.dataset.itemId !== key) return;
-        control.querySelector('.quantity-value').value = String(quantity);
-        control.querySelector('button').disabled = quantity === 0;
-        control.querySelectorAll('button')[1].disabled = quantity >= 99;
-    });
-    updateCartDock();
-    if (document.getElementById('checkoutDialog').open) renderCartContents();
-}
-
-function getCartTotals() {
-    return [...cart.values()].reduce((totals, entry) => ({
-        count: totals.count + entry.quantity,
-        subtotal: totals.subtotal + entry.quantity * entry.item.price
-    }), { count: 0, subtotal: 0 });
-}
-
-function updateCartDock() {
-    const { count, subtotal } = getCartTotals();
-    document.getElementById('cartDock').hidden = count === 0;
-    document.body.classList.toggle('cart-active', count > 0);
-    document.getElementById('cartCount').textContent = `${count} item`;
-    document.getElementById('cartSubtotal').textContent = rupiah.format(subtotal);
-}
-
-function renderCartContents() {
-    const lines = document.getElementById('cartLines');
-    lines.replaceChildren();
-    if (cart.size === 0) {
-        lines.append(makeElement('p', 'checkout-empty', 'Keranjang masih kosong. Tambahkan menu dari daftar terlebih dahulu.'));
-    }
-    cart.forEach(({ item, quantity }) => {
-        const line = makeElement('div', 'cart-line');
-        const main = makeElement('div', 'cart-line-main');
-        main.append(makeElement('strong', '', item.name));
-        main.append(makeElement('span', '', `${quantity} × ${rupiah.format(item.price)} = ${rupiah.format(quantity * item.price)}`));
-        line.append(main, createQuantityControl(item));
-        lines.append(line);
-    });
-    const { subtotal } = getCartTotals();
-    document.getElementById('checkoutSubtotal').textContent = rupiah.format(subtotal);
-    document.querySelector('#checkoutForm button[type="submit"]').disabled = cart.size === 0;
-}
-
-async function placeOrder(event) {
-    event.preventDefault();
-    if (!supabaseClient) {
-        showToast('Layanan pesanan tidak tersedia. Periksa koneksi internet.');
-        return;
-    }
-    if (cart.size === 0) return;
-
-    const checkoutForm = event.currentTarget;
-    const form = new FormData(checkoutForm);
-    const submitButton = checkoutForm.querySelector('button[type="submit"]');
-    submitButton.disabled = true;
-    submitButton.textContent = 'Mengirim pesanan...';
-    const customerPhone = String(form.get('customer_phone')).trim();
-    const phoneDigits = customerPhone.replace(/\D/g, '');
-    if (customerPhone && (phoneDigits.length < 8 || phoneDigits.length > 15)) {
-        showToast('Periksa kembali nomor HP pemesan.');
-        document.getElementById('customerPhone').focus();
-        submitButton.disabled = false;
-        submitButton.textContent = 'Kirim pesanan';
-        return;
-    }
-
-    let result;
-    try {
-        result = await supabaseClient.rpc('place_order', {
-            p_customer_name: String(form.get('customer_name')).trim(),
-            p_customer_phone: customerPhone || null,
-            p_note: String(form.get('order_note')).trim(),
-            p_payment_method: String(form.get('payment_method')),
-            p_items: [...cart.values()].map(({ item, quantity }) => ({
-                id: String(item.id),
-                quantity
-            }))
-        });
-    } catch (error) {
-        submitButton.disabled = false;
-        submitButton.textContent = 'Kirim pesanan';
-        showToast(`Koneksi gagal saat mengirim pesanan: ${error.message}`);
-        return;
-    }
-
-    submitButton.disabled = false;
-    submitButton.textContent = 'Kirim pesanan';
-    const { data, error } = result;
-    if (error) {
-        showToast(`Pesanan gagal dikirim: ${error.message}`);
-        return;
-    }
-    if (!data?.tracking_token || !data?.queue_code) {
-        showToast('Pesanan tersimpan, tetapi nomor antrean tidak diterima. Hubungi admin outlet.');
-        return;
-    }
-
-    lastOrderToken = data.tracking_token;
-    try {
-        localStorage.setItem(LAST_ORDER_TOKEN_KEY, lastOrderToken);
-    } catch {
-        showToast('Simpan nomor antrean ini; status tidak dapat dipulihkan setelah halaman ditutup.');
-    }
-    document.getElementById('trackOrderOpen').classList.remove('hidden');
-    cart.clear();
-    checkoutForm.reset();
-    updateCartDock();
-    document.getElementById('checkoutDialog').close();
-    document.getElementById('orderQueueCode').textContent = data.queue_code;
-    document.getElementById('orderStatusMessage').dataset.status = 'pending';
-    document.getElementById('orderStatusMessage').textContent = 'Menunggu konfirmasi admin.';
-    document.getElementById('orderPaymentMessage').textContent = 'Memeriksa status pembayaran.';
-    document.getElementById('orderStatusDialog').showModal();
-    await refreshOrderStatus();
-    clearInterval(orderStatusInterval);
-    orderStatusInterval = setInterval(refreshOrderStatus, 10000);
-}
-
-async function refreshOrderStatus() {
-    if (!supabaseClient || !lastOrderToken) return;
-    let result;
-    try {
-        result = await supabaseClient.rpc('get_order_status', {
-            p_tracking_token: lastOrderToken
-        });
-    } catch (error) {
-        document.getElementById('orderStatusMessage').dataset.status = 'unknown';
-        document.getElementById('orderStatusMessage').textContent =
-            `Status belum dapat diperbarui: ${error.message}`;
-        return;
-    }
-    const { data, error } = result;
-    if (error) {
-        document.getElementById('orderStatusMessage').dataset.status = 'unknown';
-        document.getElementById('orderStatusMessage').textContent =
-            `Status belum dapat diperbarui: ${error.message}`;
-        return;
-    }
-    if (!data) {
-        document.getElementById('orderStatusMessage').dataset.status = 'unknown';
-        document.getElementById('orderStatusMessage').textContent =
-            'Pesanan tidak ditemukan. Hubungi admin outlet dengan bukti pemesanan.';
-        clearInterval(orderStatusInterval);
-        return;
-    }
-    document.getElementById('orderStatusMessage').dataset.status = data.status;
-    document.getElementById('orderQueueCode').textContent = data.queue_code;
-    document.getElementById('orderStatusMessage').textContent =
-        `${orderStatusLabels[data.status] || 'Status pesanan diperbarui'} · Total ${rupiah.format(data.total_amount)}`;
-    const paymentMethod = data.payment_method === 'qris' ? 'QRIS' : 'Tunai';
-    const paymentStatus = data.payment_status === 'paid' ? 'Sudah dikonfirmasi' : 'Belum dikonfirmasi';
-    document.getElementById('orderPaymentMessage').textContent =
-        `Pembayaran ${paymentMethod}: ${paymentStatus}.`;
-    if (['rejected', 'completed'].includes(data.status)) clearInterval(orderStatusInterval);
-}
-
-function normalizeMenuItem(item) {
-    if (!item) return null;
-    const categorySource = `${item.name || ''} ${item.description || ''} ${item.display_category || ''} ${item.category || ''}`.trim();
-    const normalizedCategorySource = categorySource.toLocaleLowerCase('id-ID');
-    let category = String(item.display_category || item.category || 'Lainnya').trim() || 'Lainnya';
-    if (/geprek/.test(normalizedCategorySource)) {
-        if (/kosek|bawang/.test(normalizedCategorySource)) category = 'Paket Geprek Kosek';
-        else if (/matah/.test(normalizedCategorySource)) category = 'Paket Geprek Matah';
-        else if (/terasi/.test(normalizedCategorySource)) category = 'Paket Geprek Terasi';
-    }
-    return {
-        ...item,
-        name: String(item.name || '').trim(),
-        description: String(item.description || '').trim(),
-        category,
-        price: Number(item.price) || 0,
-        image_url: safeImageUrl(item.image_url || ''),
-        is_available: item.active !== undefined ? Boolean(item.active) : Boolean(item.is_available !== false),
-        search_terms: String(item.search_terms || '').trim(),
-        sort_order: Number(item.sort_order) || 0,
-    };
+function formatUpdatedDate(isoString) {
+    if (!isoString) return 'Daftar harga aktif';
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return 'Daftar harga aktif';
+    return `Diperbarui ${date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 }
 
 async function loadMenu() {
-    if (!supabaseClient) {
-        setConnection('Koneksi menu tidak tersedia', 'error');
-        menuItems = [];
-        renderCategories();
-        renderMenu();
-        updateCartDock();
-        return;
-    }
-    setConnection('Memuat menu...');
+    setConnection('Memuat daftar menu...');
     menuGrid.innerHTML = '<div class="skeleton" aria-label="Memuat menu"></div>';
-    const { data, error } = await supabaseClient
-        .from(MENU_TABLE)
-        .select('*')
-        .eq('active', true)
-        .order('sort_order', { ascending: true })
-        .order('id', { ascending: true });
-    if (error) {
-        setConnection('Gagal memuat menu', 'error');
+
+    let payload;
+    try {
+        const response = await fetch(DATA_URL, { cache: 'no-cache' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        payload = await response.json();
+    } catch (error) {
+        setConnection('Gagal memuat daftar menu', 'error');
         menuItems = [];
         renderCategories();
         renderMenu();
-        updateCartDock();
-        showToast(`Menu belum dapat dimuat: ${error.message}`);
+        showToast(`Daftar menu belum dapat dimuat: ${error.message}`);
         return;
     }
-    menuItems = (data || []).map(normalizeMenuItem).filter(Boolean);
-    for (const [key, entry] of cart) {
-        const refreshedItem = menuItems.find(item => String(item.id) === key);
-        if (refreshedItem) cart.set(key, { ...entry, item: refreshedItem });
-        else cart.delete(key);
+
+    const rawList = Array.isArray(payload) ? payload : (Array.isArray(payload?.menus) ? payload.menus : []);
+    if (!Array.isArray(payload)) {
+        if (Array.isArray(payload?.category_order) && payload.category_order.length) {
+            categoryOrder = payload.category_order.map(c => String(c).trim()).filter(Boolean);
+        }
+        applyOutletInfo(payload?.outlet);
+        setConnection(formatUpdatedDate(payload?.updated_at), 'online');
+    } else {
+        setConnection('Daftar harga aktif', 'online');
     }
-    setConnection('Menu diperbarui langsung', 'online');
+
+    menuItems = rawList.map(normalizeMenuItem).filter(Boolean);
     renderCategories();
     renderMenu();
-    updateCartDock();
-    if (document.getElementById('checkoutDialog').open) renderCartContents();
 }
 
-function safeImageUrl(url) {
-    if (!url) return '';
-    try {
-        const parsed = new URL(url);
-        return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : '';
-    } catch {
-        return '';
-    }
-}
-
-document.getElementById('searchInput').addEventListener('input', renderMenu);
+searchInput.addEventListener('input', renderMenu);
+clearSearchBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    searchInput.focus();
+    renderMenu();
+});
 document.getElementById('refreshMenu').addEventListener('click', loadMenu);
-document.getElementById('checkoutOpen').addEventListener('click', () => {
-    renderCartContents();
-    document.getElementById('checkoutDialog').showModal();
-});
-document.getElementById('checkoutClose').addEventListener('click', () => document.getElementById('checkoutDialog').close());
-document.getElementById('checkoutForm').addEventListener('submit', placeOrder);
-document.getElementById('checkoutDialog').addEventListener('click', event => {
-    if (event.target === event.currentTarget) event.currentTarget.close();
-});
-document.getElementById('trackOrderOpen').addEventListener('click', async () => {
-    document.getElementById('orderStatusDialog').showModal();
-    await refreshOrderStatus();
-    if (!['rejected', 'completed'].includes(document.getElementById('orderStatusMessage').dataset.status)) {
-        clearInterval(orderStatusInterval);
-        orderStatusInterval = setInterval(refreshOrderStatus, 10000);
-    }
-});
-document.getElementById('orderStatusClose').addEventListener('click', () =>
-    document.getElementById('orderStatusDialog').close());
-document.getElementById('orderStatusDialog').addEventListener('click', event => {
-    if (event.target === event.currentTarget) event.currentTarget.close();
-});
-document.getElementById('contactButton').addEventListener('click', event => {
-    const phone = CONFIG.outletWhatsApp.replace(/\D/g, '');
-    if (!phone) {
-        event.preventDefault();
-        showToast('Nomor WhatsApp outlet belum dikonfigurasi.');
-        return;
-    }
-    event.currentTarget.href = `https://wa.me/${phone}?text=${encodeURIComponent('Halo Rocket Chicken KS Tubun, saya ingin bertanya tentang menu.')}`;
-    event.currentTarget.target = '_blank';
-    event.currentTarget.rel = 'noopener noreferrer';
-});
 
-if (lastOrderToken) document.getElementById('trackOrderOpen').classList.remove('hidden');
 loadMenu();

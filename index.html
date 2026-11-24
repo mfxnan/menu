@@ -3,17 +3,16 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f5f4f0">
-    <meta name="description" content="Lihat menu dan harga Rocket Chicken KS Tubun.">
-    <meta property="og:image" content="https://mfxnan.github.io/menu/img/og-image.png">
+    <meta name="description" content="Daftar menu dan harga terbaru Rocket Chicken KS Tubun, Rejasari, Purwokerto.">
+    <meta property="og:title" content="Menu &amp; Harga Rocket Chicken KS Tubun">
+    <meta property="og:description" content="Lihat daftar menu dan harga terbaru Rocket Chicken KS Tubun, Rejasari, Purwokerto.">
+    <meta property="og:image" content="https://mfxnan.github.io/menu/img/og-image.jpg">
     <meta property="og:url" content="https://mfxnan.github.io/menu/">
     <meta property="og:type" content="website">
     <title>Menu Rocket Chicken KS Tubun</title>
-    <link rel="icon"
-        href="https://firebasestorage.googleapis.com/v0/b/rocketchicken-v2/o/Assets%2Frc_logo_square.png?alt=media&amp;token=4d2c56f5-c57a-48a4-8989-31c356e5cb2e"
-        type="image/png">
+    <link rel="icon" href="img/logo.png" type="image/png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -21,8 +20,6 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide-core.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-    <script src="js/zoom-lock.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js" defer></script>
     <script src="js/app.js" defer></script>
 </head>
@@ -31,15 +28,16 @@
     <div class="wrap">
         <header class="site-header">
             <a class="brand" href="#top" aria-label="Rocket Chicken KS Tubun, beranda">
-                <img class="brand-mark"
-                    src="https://scontent-cgk2-2.cdninstagram.com/v/t51.82787-19/727287239_18030453479821656_8415184296205694350_n.jpg?stp=dst-jpg_s150x150_tt6&amp;_nc_cat=101&amp;ccb=7-5&amp;_nc_sid=f7ccc5&amp;efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4zMjAuQzMifQ%3D%3D&amp;_nc_ohc=LyHMPoP-JWAQ7kNvwEpL54x&amp;_nc_oc=AdqLtrVqcAsP9pPmF4AAe7qjE9DuBwMsdtVmfuqInDEsGlHqMFRN2InOtUdc0ZkbKgM&amp;_nc_zt=24&amp;_nc_ht=scontent-cgk2-2.cdninstagram.com&amp;_nc_gid=yX8QXLAgBLjT5ktVDnhmew&amp;_nc_ss=7ba8c&amp;oh=00_AQOwGr5IcjdnjyMMSA2Nzu8nDNz0mb-qifPIrOmmAuYT2w&amp;oe=6AD7D740"
-                    alt="" aria-hidden="true">
-                <span class="brand-copy"><span class="brand-name">ROCKET CHICKEN</span>
-                    <span class="brand-location">Outlet Ks Tubun-Rejasari-Purwokerto</span></span>
+                <img class="brand-mark" src="img/logo.png" alt="" aria-hidden="true" width="42" height="42">
+                <span class="brand-copy">
+                    <span class="brand-name" id="outletName">ROCKET CHICKEN</span>
+                    <span class="brand-location" id="outletBranch">Outlet KS Tubun - Rejasari - Purwokerto</span>
+                </span>
             </a>
             <nav class="header-actions" aria-label="Navigasi utama">
-                <button class="button secondary small hidden" id="trackOrderOpen" type="button">Lihat antrean</button>
-                <a class="button small" href="#kontak">Hubungi outlet</a>
+                <a class="button secondary small hidden" id="headerMapsBtn" href="#kontak" target="_blank"
+                    rel="noopener noreferrer">Lokasi</a>
+                <a class="button small" id="headerWaBtn" href="#kontak">Hubungi outlet</a>
             </nav>
         </header>
 
@@ -48,22 +46,25 @@
                 <div class="hero-copy">
                     <div class="eyebrow">Rocket Chicken · KS Tubun</div>
                     <h1 id="heroTitle">Pengin Makan Enakk?</h1>
-                    <p>Temukan menu favoritmu, cek harga terbaru, lalu pesan langsung ke outlet KS Tubun.</p>
-                    <a class="button" href="#menu">Lihat menu <span aria-hidden="true">↓</span></a>
+                    <p>Cek daftar menu dan harga terbaru Rocket Chicken outlet KS Tubun, lalu hubungi kami lewat WhatsApp atau kunjungi langsung outletnya.</p>
+                    <div class="hero-actions">
+                        <a class="button" href="#menu">Lihat daftar harga <span aria-hidden="true">↓</span></a>
+                        <a class="button hero-outline hidden" id="heroMapsBtn" href="#kontak" target="_blank"
+                            rel="noopener noreferrer">Buka Maps <span aria-hidden="true">↗</span></a>
+                    </div>
                 </div>
                 <div class="hero-photo">
-                    <img src="https://storage.googleapis.com/rocketchicken-2019.appspot.com/home/foto-sampul/1779352362_produk%20rc.png"
-                        alt="Produk Rocket Chicken" fetchpriority="high">
+                    <img src="img/hero.webp" alt="Produk Rocket Chicken" fetchpriority="high">
                 </div>
             </section>
 
             <section id="menu" aria-labelledby="menuTitle">
                 <div class="catalog-head">
                     <div>
-                        <div class="section-kicker">Pilih yang kamu suka</div>
+                        <div class="section-kicker">Daftar Harga Online</div>
                         <h2 id="menuTitle">Menu Rocket Chicken</h2>
                     </div>
-                    <span class="connection" id="connectionStatus" role="status">Menghubungkan ke menu...</span>
+                    <span class="connection" id="connectionStatus" role="status">Memuat daftar menu...</span>
                 </div>
                 <div class="catalog-tools">
                     <div class="splide category-carousel" id="categoryCarousel" role="region"
@@ -72,111 +73,68 @@
                             <ul class="category-list splide__list" id="categoryList"></ul>
                         </div>
                     </div>
-                    <label class="search-box"><span aria-hidden="true">⌕</span><input id="searchInput" type="search"
-                            placeholder="Cari menu..." aria-label="Cari menu"></label>
+                    <label class="search-box">
+                        <span aria-hidden="true">⌕</span>
+                        <input id="searchInput" type="search" placeholder="Cari semua menu..."
+                            aria-label="Cari semua menu">
+                    </label>
                 </div>
-                <div class="menu-meta"><span id="resultCount">Memuat menu</span><button class="button secondary small"
-                        id="refreshMenu" type="button">Muat ulang</button></div>
+                <div class="menu-meta">
+                    <span id="resultCount">Memuat menu...</span>
+                    <div class="menu-meta-actions">
+                        <button class="button secondary small hidden" id="clearSearch" type="button">Hapus pencarian</button>
+                        <button class="button secondary small" id="refreshMenu" type="button">Muat ulang</button>
+                    </div>
+                </div>
                 <div class="menu-grid" id="menuGrid" aria-live="polite">
                     <div class="skeleton" aria-label="Memuat menu"></div>
                 </div>
             </section>
 
             <section class="contact-band" id="kontak" aria-labelledby="contactTitle">
-                <div>
-                    <h2 id="contactTitle">Sudah tahu mau pesan apa?</h2>
-                    <p>Hubungi Rocket Chicken KS Tubun untuk menanyakan pesanan dan ketersediaan menu.</p>
+                <div class="contact-copy">
+                    <div class="section-kicker">Kontak &amp; Lokasi Outlet</div>
+                    <h2 id="contactTitle">Mau tanya menu atau langsung mampir?</h2>
+                    <p>Hubungi Rocket Chicken KS Tubun lewat WhatsApp, ikuti media sosial kami, atau buka petunjuk arah di Google Maps.</p>
+                    <div class="outlet-meta" id="outletMeta"></div>
                 </div>
-                <a class="button" id="contactButton" href="#kontak">Chat outlet <span aria-hidden="true">↗</span></a>
+                <div class="contact-actions" id="contactActions">
+                    <a class="button wa-btn hidden" id="contactWaBtn" href="#kontak" target="_blank"
+                        rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.52 3.48A11.82 11.82 0 0 0 12.06 0C5.5 0 .16 5.33.16 11.9c0 2.1.55 4.14 1.6 5.95L0 24l6.33-1.66a11.86 11.86 0 0 0 5.73 1.46h.01c6.56 0 11.9-5.34 11.9-11.9 0-3.18-1.24-6.17-3.45-8.42Zm-8.46 18.3h-.01a9.87 9.87 0 0 1-5.04-1.38l-.36-.22-3.76.99 1-3.66-.24-.38a9.84 9.84 0 0 1-1.51-5.24c0-5.44 4.43-9.87 9.88-9.87 2.64 0 5.12 1.03 6.98 2.9a9.81 9.81 0 0 1 2.9 6.98c0 5.45-4.43 9.88-9.84 9.88Zm5.41-7.4c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.08-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35Z"/></svg>
+                        <span>Chat WhatsApp</span>
+                    </a>
+                    <a class="button secondary maps-btn hidden" id="contactMapsBtn" href="#kontak" target="_blank"
+                        rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+                        <span>Google Maps</span>
+                    </a>
+                    <a class="button secondary social-btn hidden" id="contactIgBtn" href="#kontak" target="_blank"
+                        rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2Zm-.2 2A3.6 3.6 0 0 0 4 7.6v8.8C4 18.39 5.61 20 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6C20 5.61 18.39 4 16.4 4H7.6Zm9.65 1.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></svg>
+                        <span>Instagram</span>
+                    </a>
+                    <a class="button secondary social-btn hidden" id="contactTiktokBtn" href="#kontak" target="_blank"
+                        rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48Z"/></svg>
+                        <span>TikTok</span>
+                    </a>
+                    <a class="button secondary social-btn hidden" id="contactFbBtn" href="#kontak" target="_blank"
+                        rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.5 21v-8.2h2.76l.41-3.2H13.5V7.56c0-.93.26-1.56 1.59-1.56h1.7V3.14c-.3-.04-1.31-.14-2.49-.14-2.46 0-4.15 1.5-4.15 4.26v2.34H7.36v3.2h2.79V21h3.35Z"/></svg>
+                        <span>Facebook</span>
+                    </a>
+                </div>
             </section>
         </main>
+
         <footer>
-            <div class="footer-inner"><span>Rocket Chicken KS Tubun</span><span>Menu dan harga dapat berubah secara
-                    berkala.</span></div>
+            <div class="footer-inner">
+                <span id="footerOutlet">Rocket Chicken KS Tubun</span>
+                <span>Daftar menu dan harga dapat berubah secara berkala.</span>
+            </div>
         </footer>
     </div>
-
-    <aside class="cart-dock" id="cartDock" aria-live="polite" hidden>
-        <div class="cart-dock-summary"><span id="cartCount">0 item</span><strong id="cartSubtotal">Rp0</strong></div>
-        <button class="button" id="checkoutOpen" type="button">Lihat keranjang</button>
-    </aside>
-
-    <dialog class="checkout-dialog" id="checkoutDialog" aria-labelledby="checkoutTitle">
-        <section class="dialog-shell checkout-shell">
-            <div class="dialog-top checkout-top">
-                <div>
-                    <div class="section-kicker">Pesanan Anda</div>
-                    <h2 id="checkoutTitle">Keranjang &amp; checkout</h2>
-                    <p>Pesanan akan dikirim ke admin untuk dikonfirmasi.</p>
-                </div>
-                <button class="icon-button" id="checkoutClose" type="button" aria-label="Tutup keranjang">×</button>
-            </div>
-            <form id="checkoutForm" class="checkout-form">
-                <div class="checkout-scroll">
-                    <div class="checkout-section-heading">
-                        <h3>Ringkasan pesanan</h3>
-                        <span>Harga dalam rupiah</span>
-                    </div>
-                    <div class="cart-lines" id="cartLines"></div>
-                    <div class="cart-total-line checkout-total-line">
-                        <strong>Total pesanan</strong><strong id="checkoutSubtotal">Rp0</strong>
-                    </div>
-                    <div class="checkout-section-heading checkout-details-heading">
-                        <h3>Detail pemesan</h3>
-                    </div>
-                    <div class="form-grid">
-                        <div class="field">
-                            <label for="customerName">Nama pemesan</label>
-                            <input id="customerName" name="customer_name" autocomplete="name" maxlength="100"
-                                placeholder="Contoh: Rani" required>
-                        </div>
-                        <div class="field">
-                            <label for="customerPhone">Nomor HP <span class="optional-label">Opsional</span></label>
-                            <input id="customerPhone" name="customer_phone" type="tel" autocomplete="tel"
-                                inputmode="numeric" maxlength="24" placeholder="08xx xxxx xxxx">
-                        </div>
-                        <div class="field full">
-                            <label for="orderNote">Keterangan lainnya <span
-                                    class="optional-label">Opsional</span></label>
-                            <textarea id="orderNote" name="order_note" maxlength="500" rows="3"
-                                placeholder="Catatan untuk pesanan"></textarea>
-                        </div>
-                        <fieldset class="field full payment-options">
-                            <legend class="field-label">Metode pembayaran</legend>
-                            <label class="payment-option">
-                                <input type="radio" name="payment_method" value="cash" checked>
-                                <span>Tunai</span>
-                            </label>
-                            <label class="payment-option">
-                                <input type="radio" name="payment_method" value="qris">
-                                <span>QRIS di kasir setelah pesanan dikonfirmasi</span>
-                            </label>
-                        </fieldset>
-                    </div>
-                </div>
-                <div class="form-actions checkout-actions">
-                    <button class="button" type="submit">Kirim pesanan</button>
-                </div>
-            </form>
-        </section>
-    </dialog>
-
-    <dialog class="checkout-dialog order-status-dialog" id="orderStatusDialog" aria-labelledby="orderStatusTitle">
-        <section class="dialog-shell checkout-shell order-status-shell">
-            <div class="dialog-top checkout-top">
-                <div>
-                    <div class="section-kicker">Status pesanan</div>
-                    <h2 id="orderStatusTitle">Nomor antrean</h2>
-                </div>
-                <button class="icon-button" id="orderStatusClose" type="button" aria-label="Tutup status pesanan">×</button>
-            </div>
-            <div class="order-status-content" aria-live="polite">
-                <strong class="queue-code" id="orderQueueCode">Memuat...</strong>
-                <p id="orderStatusMessage">Memeriksa status pesanan.</p>
-                <p id="orderPaymentMessage"></p>
-            </div>
-        </section>
-    </dialog>
 
     <div id="toast" role="status" aria-live="polite"></div>
 </body>
